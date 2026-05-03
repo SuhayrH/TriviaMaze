@@ -15,6 +15,7 @@ import javax.swing.SwingUtilities;
  *
  * @author Roman Pavlyshyn
  * @author Jinal Thummar
+ * @author Suhayr Hassan
  * @version 3 May 2026
  */
 public final class TriviaMaze {
