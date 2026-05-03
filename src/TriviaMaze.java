@@ -9,11 +9,13 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
+
 /**
  * Starts the Trivia Maze application.
  *
  * @author Roman Pavlyshyn
- * @version 2 May 2026
+ * @author Jinal Thummar
+ * @version 3 May 2026
  */
 public final class TriviaMaze {
     /**
@@ -25,6 +27,17 @@ public final class TriviaMaze {
      * The application window height.
      */
     private static final int FRAME_HEIGHT = 500;
+
+    /**
+     * The default game state used for save and load testing.
+     */
+    private static final String DEFAULT_GAME_STATE =
+            "Player location: row=0, col=0; score=0";
+
+    /**
+     * The current game state.
+     */
+    private static String myCurrentGameState = DEFAULT_GAME_STATE;
 
     /**
      * Private constructor to prevent instantiation.
@@ -59,7 +72,7 @@ public final class TriviaMaze {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
-        frame.setJMenuBar(createMenuBar(frame));
+        frame.setJMenuBar(createMenuBar(frame, welcomeLabel));
         frame.add(welcomeLabel, BorderLayout.CENTER);
 
         frame.setLocationRelativeTo(null);
@@ -70,14 +83,44 @@ public final class TriviaMaze {
      * Creates the menu bar for the application.
      *
      * @param theFrame the main application frame
+     * @param theWelcomeLabel the label used to show game status
      * @return the completed menu bar
      */
-    private static JMenuBar createMenuBar(final JFrame theFrame) {
+    private static JMenuBar createMenuBar(final JFrame theFrame,
+                                          final JLabel theWelcomeLabel) {
         final JMenuBar menuBar = new JMenuBar();
 
+        menuBar.add(createFileMenu(theFrame, theWelcomeLabel));
         menuBar.add(createHelpMenu(theFrame));
 
         return menuBar;
+    }
+
+    /**
+     * Creates the File menu.
+     *
+     * @param theFrame the main application frame
+     * @param theWelcomeLabel the label used to show game status
+     * @return the File menu
+     */
+    private static JMenu createFileMenu(final JFrame theFrame,
+                                        final JLabel theWelcomeLabel) {
+        final JMenu fileMenu = new JMenu("File");
+
+        final JMenuItem saveItem = new JMenuItem("Save Game");
+        final JMenuItem loadItem = new JMenuItem("Load Game");
+        final JMenuItem exitItem = new JMenuItem("Exit");
+
+        saveItem.addActionListener(theEvent -> saveGame(theFrame));
+        loadItem.addActionListener(theEvent -> loadGame(theFrame, theWelcomeLabel));
+        exitItem.addActionListener(theEvent -> exitGame(theFrame));
+
+        fileMenu.add(saveItem);
+        fileMenu.add(loadItem);
+        fileMenu.addSeparator();
+        fileMenu.add(exitItem);
+
+        return fileMenu;
     }
 
     /**
@@ -88,8 +131,10 @@ public final class TriviaMaze {
      */
     private static JMenu createHelpMenu(final JFrame theFrame) {
         final JMenu helpMenu = new JMenu("Help");
+
         final JMenuItem instructionsItem = new JMenuItem("Game Play Instructions");
         final JMenuItem aboutItem = new JMenuItem("About");
+
 
         instructionsItem.addActionListener(theEvent -> showInstructions(theFrame));
         aboutItem.addActionListener(theEvent -> showAbout(theFrame));
@@ -98,6 +143,66 @@ public final class TriviaMaze {
         helpMenu.add(aboutItem);
 
         return helpMenu;
+    }
+
+    /**
+     * Saves the current game state.
+     *
+     * @param theFrame the parent frame
+     */
+    private static void saveGame(final JFrame theFrame) {
+        GameMemento.save(myCurrentGameState);
+
+        JOptionPane.showMessageDialog(
+                theFrame,
+                "Game saved successfully.",
+                "Save Game",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /**
+     * Loads the saved game state.
+     *
+     * @param theFrame the parent frame
+     * @param theWelcomeLabel the label used to show loaded game status
+     */
+    private static void loadGame(final JFrame theFrame,
+                                 final JLabel theWelcomeLabel) {
+        final String loadedGameState = GameMemento.load();
+
+        if (loadedGameState.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    theFrame,
+                    "No saved game was found.",
+                    "Load Game",
+                    JOptionPane.WARNING_MESSAGE);
+        } else {
+            myCurrentGameState = loadedGameState;
+            theWelcomeLabel.setText("Loaded game: " + myCurrentGameState);
+
+            JOptionPane.showMessageDialog(
+                    theFrame,
+                    "Game loaded successfully.",
+                    "Load Game",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    /**
+     * Exits the game after confirming with the user.
+     *
+     * @param theFrame the parent frame
+     */
+    private static void exitGame(final JFrame theFrame) {
+        final int userChoice = JOptionPane.showConfirmDialog(
+                theFrame,
+                "Are you sure you want to exit?",
+                "Exit Game",
+                JOptionPane.YES_NO_OPTION);
+
+        if (userChoice == JOptionPane.YES_OPTION) {
+            theFrame.dispose();
+        }
     }
 
     /**
