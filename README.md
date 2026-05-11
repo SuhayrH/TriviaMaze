@@ -1,7 +1,7 @@
 ## Team Members
-- Suhayr
-- Roman
-- Jinal
+- Suhayr Hassan
+- Jinal Thummar
+- Roman Pavlyshyn
 
 ## Project Description
 A Java-based trivia maze game where players navigate 
