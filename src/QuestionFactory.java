@@ -1,5 +1,11 @@
+/*
+ * Trivia Maze - TCSS 360
+ * Spring 2026
+ */
+
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -19,6 +25,13 @@ public class QuestionFactory {
     private static final String RANDOM_QUESTION_QUERY =
             "SELECT question_text, answer, type, options "
             + "FROM questions ORDER BY RANDOM() LIMIT 1";
+
+    /**
+     * SQL query for selecting a random question by type.
+     */
+    private static final String QUESTION_BY_TYPE_QUERY =
+            "SELECT question_text, answer, type, options "
+            + "FROM questions WHERE type = ? ORDER BY RANDOM() LIMIT 1";
 
     /**
      * The database path.
@@ -51,14 +64,9 @@ public class QuestionFactory {
      */
     public Question getQuestionByType(final String theType) {
         Question question = createFallbackQuestion();
-        
-        // Can be iterated upon once database is set up
-        if (theType != null) {
-            final String query = "SELECT question_text, answer, type, options "
-                    + "FROM questions WHERE type = '" + theType
-                    + "' ORDER BY RANDOM() LIMIT 1";
 
-            question = getQuestionFromQuery(query);
+        if (theType != null) {
+            question = getQuestionFromTypeQuery(theType);
         }
 
         return question;
@@ -78,6 +86,45 @@ public class QuestionFactory {
                     DriverManager.getConnection("jdbc:sqlite:" + myDbPath);
             final Statement statement = connection.createStatement();
             final ResultSet resultSet = statement.executeQuery(theQuery);
+
+            if (resultSet.next()) {
+                final String questionText = resultSet.getString("question_text");
+                final String answer = resultSet.getString("answer");
+                final String type = resultSet.getString("type");
+                final String options = resultSet.getString("options");
+
+                question = createQuestion(questionText, answer, type, options);
+            }
+
+            resultSet.close();
+            statement.close();
+            connection.close();
+        } catch (final Exception exception) {
+            System.out.println("Could not load question from database: "
+                    + exception.getMessage());
+        }
+
+        return question;
+    }
+
+    /**
+     * Gets a question from the database using a question type.
+     *
+     * @param theType the question type
+     * @return the created question
+     */
+    private Question getQuestionFromTypeQuery(final String theType) {
+        Question question = createFallbackQuestion();
+
+        try {
+            final Connection connection =
+                    DriverManager.getConnection("jdbc:sqlite:" + myDbPath);
+            final PreparedStatement statement =
+                    connection.prepareStatement(QUESTION_BY_TYPE_QUERY);
+
+            statement.setString(1, theType);
+
+            final ResultSet resultSet = statement.executeQuery();
 
             if (resultSet.next()) {
                 final String questionText = resultSet.getString("question_text");
