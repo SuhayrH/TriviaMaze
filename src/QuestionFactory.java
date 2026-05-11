@@ -9,29 +9,51 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * Creates trivia questions from the SQLite database.
  *
  * @author Roman Pavlyshyn
- * @version 2 May 2026
+ * @version 10 May 2026
  */
 public class QuestionFactory {
+    /**
+     * The SQLite database URL prefix.
+     */
+    private static final String DATABASE_URL_PREFIX = "jdbc:sqlite:";
+
     /**
      * SQL query for selecting a random question.
      */
     private static final String RANDOM_QUESTION_QUERY =
-            "SELECT question_text, answer, type, options "
+            "SELECT question_text, answer, question_type, "
+            + "choice_a, choice_b, choice_c, choice_d "
             + "FROM questions ORDER BY RANDOM() LIMIT 1";
 
     /**
      * SQL query for selecting a random question by type.
      */
     private static final String QUESTION_BY_TYPE_QUERY =
-            "SELECT question_text, answer, type, options "
-            + "FROM questions WHERE type = ? ORDER BY RANDOM() LIMIT 1";
+            "SELECT question_text, answer, question_type, "
+            + "choice_a, choice_b, choice_c, choice_d "
+            + "FROM questions WHERE question_type = ? "
+            + "ORDER BY RANDOM() LIMIT 1";
+
+    /**
+     * The multiple choice database type.
+     */
+    private static final String MULTIPLE_CHOICE_TYPE = "MULTIPLE_CHOICE";
+
+    /**
+     * The true or false database type.
+     */
+    private static final String TRUE_FALSE_TYPE = "TRUE_FALSE";
+
+    /**
+     * The short answer database type.
+     */
+    private static final String SHORT_ANSWER_TYPE = "SHORT_ANSWER";
 
     /**
      * The database path.
@@ -83,17 +105,12 @@ public class QuestionFactory {
 
         try {
             final Connection connection =
-                    DriverManager.getConnection("jdbc:sqlite:" + myDbPath);
+                    DriverManager.getConnection(DATABASE_URL_PREFIX + myDbPath);
             final Statement statement = connection.createStatement();
             final ResultSet resultSet = statement.executeQuery(theQuery);
 
             if (resultSet.next()) {
-                final String questionText = resultSet.getString("question_text");
-                final String answer = resultSet.getString("answer");
-                final String type = resultSet.getString("type");
-                final String options = resultSet.getString("options");
-
-                question = createQuestion(questionText, answer, type, options);
+                question = createQuestionFromResultSet(resultSet);
             }
 
             resultSet.close();
@@ -118,7 +135,7 @@ public class QuestionFactory {
 
         try {
             final Connection connection =
-                    DriverManager.getConnection("jdbc:sqlite:" + myDbPath);
+                    DriverManager.getConnection(DATABASE_URL_PREFIX + myDbPath);
             final PreparedStatement statement =
                     connection.prepareStatement(QUESTION_BY_TYPE_QUERY);
 
@@ -127,12 +144,7 @@ public class QuestionFactory {
             final ResultSet resultSet = statement.executeQuery();
 
             if (resultSet.next()) {
-                final String questionText = resultSet.getString("question_text");
-                final String answer = resultSet.getString("answer");
-                final String type = resultSet.getString("type");
-                final String options = resultSet.getString("options");
-
-                question = createQuestion(questionText, answer, type, options);
+                question = createQuestionFromResultSet(resultSet);
             }
 
             resultSet.close();
@@ -147,26 +159,45 @@ public class QuestionFactory {
     }
 
     /**
+     * Creates a question object from the current result set row.
+     *
+     * @param theResultSet the database result set
+     * @return the created question
+     * @throws Exception if the result set cannot be read
+     */
+    private Question createQuestionFromResultSet(final ResultSet theResultSet)
+            throws Exception {
+        final String questionText = theResultSet.getString("question_text");
+        final String answer = theResultSet.getString("answer");
+        final String questionType = theResultSet.getString("question_type");
+        final List<String> choices = createChoices(theResultSet);
+
+        return createQuestion(questionText, answer, questionType, choices);
+    }
+
+    /**
      * Creates the correct question object based on the database type.
      *
      * @param theQuestionText the question text
      * @param theAnswer the correct answer
-     * @param theType the question type
-     * @param theOptions the multiple choice options
+     * @param theQuestionType the question type
+     * @param theChoices the multiple choice options
      * @return the created question
      */
     private Question createQuestion(final String theQuestionText,
                                     final String theAnswer,
-                                    final String theType,
-                                    final String theOptions) {
+                                    final String theQuestionType,
+                                    final List<String> theChoices) {
         Question question = new ShortAnswerQuestion(theQuestionText, theAnswer);
 
-        if ("MCQ".equalsIgnoreCase(theType)) {
-            final List<String> choices = createChoices(theOptions);
-            question = new MultipleChoiceQuestion(theQuestionText, theAnswer, choices);
-        } else if ("TrueFalse".equalsIgnoreCase(theType)) {
+        if (MULTIPLE_CHOICE_TYPE.equalsIgnoreCase(theQuestionType)) {
+            question = new MultipleChoiceQuestion(
+                    theQuestionText,
+                    theAnswer,
+                    theChoices);
+        } else if (TRUE_FALSE_TYPE.equalsIgnoreCase(theQuestionType)) {
             question = new TrueFalseQuestion(theQuestionText, theAnswer);
-        } else if ("ShortAnswer".equalsIgnoreCase(theType)) {
+        } else if (SHORT_ANSWER_TYPE.equalsIgnoreCase(theQuestionType)) {
             question = new ShortAnswerQuestion(theQuestionText, theAnswer);
         }
 
@@ -174,19 +205,35 @@ public class QuestionFactory {
     }
 
     /**
-     * Creates the answer choice list from the database options string.
+     * Creates the answer choice list from the database choice columns.
      *
-     * @param theOptions the pipe-delimited answer choices
+     * @param theResultSet the database result set
      * @return the answer choices
+     * @throws Exception if the result set cannot be read
      */
-    private List<String> createChoices(final String theOptions) {
-        List<String> choices = new ArrayList<String>();
+    private List<String> createChoices(final ResultSet theResultSet)
+            throws Exception {
+        final List<String> choices = new ArrayList<String>();
 
-        if (theOptions != null && !theOptions.isEmpty()) {
-            choices = Arrays.asList(theOptions.split("\\|"));
-        }
+        addChoice(choices, theResultSet.getString("choice_a"));
+        addChoice(choices, theResultSet.getString("choice_b"));
+        addChoice(choices, theResultSet.getString("choice_c"));
+        addChoice(choices, theResultSet.getString("choice_d"));
 
         return choices;
+    }
+
+    /**
+     * Adds a choice to the list if the choice exists.
+     *
+     * @param theChoices the choice list
+     * @param theChoice the choice to add
+     */
+    private void addChoice(final List<String> theChoices,
+                           final String theChoice) {
+        if (theChoice != null && !theChoice.isEmpty()) {
+            theChoices.add(theChoice);
+        }
     }
 
     /**
