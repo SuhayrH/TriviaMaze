@@ -1,3 +1,6 @@
+#GitHub Repository:
+https://github.com/SuhayrH/TriviaMaze
+
 ## Team Members
 - Suhayr Hassan
 - Jinal Thummar
