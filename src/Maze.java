@@ -150,6 +150,22 @@ public class Maze {
     public int getCurrentCol() {
         return myCurrentCol;
     }
+    
+    /**
+     * Sets the current player position in the maze.
+     *
+     * @param theRow the row to move the player to
+     * @param theCol the column to move the player to
+     */
+    public void setCurrentPosition(final int theRow, final int theCol) {
+        if (!isInBounds(theRow, theCol)) {
+            throw new IllegalArgumentException("Player position is outside the maze.");
+        }
+
+        myCurrentRow = theRow;
+        myCurrentCol = theCol;
+        getCurrentRoom().setVisited(true);
+    }
 
     /**
      * Returns the size of the maze.
