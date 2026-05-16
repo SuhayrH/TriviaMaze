@@ -21,8 +21,7 @@ public final class Database {
     /**
      * The SQLite database connection URL.
      */
-    private static final String DATABASE_URL = "jdbc:sqlite:trivia.db";
-
+    private static final String DATABASE_URL = "jdbc:sqlite:questions.db";
     /**
      * SQL statement used to create the questions table.
      */
