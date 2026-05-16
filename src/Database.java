@@ -1,6 +1,6 @@
 /*
  * TCSS 360 - Trivia Maze
- * Iteration 1
+ * Iteration 3
  */
 
 import java.sql.Connection;
@@ -14,7 +14,7 @@ import java.sql.Statement;
  * questions table for the Trivia Maze project.
  *
  * @author Jinal
- * @version 3 May 2026
+ * @version 16th May 2026
  */
 public final class Database {
 
