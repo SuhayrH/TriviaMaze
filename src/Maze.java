@@ -8,7 +8,8 @@
  *
  * @author Suhayr Hassan
  * @author Roman Pavlyshyn
- * @version 10 May 2026
+ * @author Jinal Thummar
+ * @version 16th May 2026
  */
 public class Maze {
 
