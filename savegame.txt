@@ -1,1 +1,1 @@
-Player location: row=0, col=0; score=0
+model.Player location: row=0, col=0; score=0
