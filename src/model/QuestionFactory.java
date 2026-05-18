@@ -1,3 +1,4 @@
+package model;
 /*
  * Trivia Maze - TCSS 360
  * Spring 2026
