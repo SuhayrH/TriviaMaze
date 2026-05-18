@@ -1,14 +1,19 @@
 package model;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Represents a model.Room in the Trivia model.Maze game.
  * @author Suhayr Hassan
- * @version 10 May 2026
+ * @author Roman Pavlyshyn
+ * @version 17 May 2026
  */
-public class Room {
+public class Room implements Serializable {
+
+    /** Serialization version number. */
+    private static final long serialVersionUID = 1L;
 
     /** The row position of this room in the maze grid. */
     private final int myRow;

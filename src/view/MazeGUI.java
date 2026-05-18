@@ -13,6 +13,8 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
+import org.w3c.dom.events.MouseEvent;
+
 /**
  * The main game panel for the Trivia Maze game.
  * Features character selection, a grid-based maze map,
@@ -63,7 +65,7 @@ public class MazeGUI extends JPanel {
     private static final String DPAD_RIGHT = "src/sprites/right.png";
 
     // ── Model ────────────────────────────────────────────────────────────────
-    private final Maze myMaze;
+    private Maze myMaze;
     private final int  mySize;
 
     // ── State ────────────────────────────────────────────────────────────────
@@ -637,7 +639,71 @@ public class MazeGUI extends JPanel {
     }
 
     // ── Static window builders ───────────────────────────────────────────────
+    /**
+     * Saves the current maze state.
+     *
+     * @param theFrame the parent frame for the message dialog
+     */
+    private void saveGame(final JFrame theFrame) {
+        final boolean saved = GameMemento.saveMaze(myMaze);
 
+        if (saved) {
+            JOptionPane.showMessageDialog(
+                    theFrame,
+                    "Game saved successfully.",
+                    "Save Game",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(
+                    theFrame,
+                    "Game could not be saved.",
+                    "Save Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * Loads a previously saved maze state.
+     *
+     * @param theFrame the parent frame for the message dialog
+     */
+    private void loadGame(final JFrame theFrame) {
+        final Maze loadedMaze = GameMemento.loadMaze();
+
+        if (loadedMaze == null) {
+            JOptionPane.showMessageDialog(
+                    theFrame,
+                    "No saved game could be loaded.",
+                    "Load Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (loadedMaze.getSize() != mySize) {
+            JOptionPane.showMessageDialog(
+                    theFrame,
+                    "Saved maze size does not match this game window.",
+                    "Load Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        myMaze = loadedMaze;
+        myCurrentDoor = null;
+        myCurrentDir = null;
+        myGameStarted = true;
+
+        myQuestionText.setText("Saved game loaded.\n\nUse the arrow pad to continue.");
+        myAnswerField.setText("");
+        setFeedback("> saved game loaded.", TEXT_DARK);
+        updateGrid();
+
+        JOptionPane.showMessageDialog(
+                theFrame,
+                "Game loaded successfully.",
+                "Load Game",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
     /**
      * Creates and displays the main game window.
      */
@@ -651,8 +717,9 @@ public class MazeGUI extends JPanel {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setPreferredSize(new Dimension(980, 780));
         frame.setBackground(SKY_BLUE);
-        frame.setJMenuBar(buildMenuBar(frame));
-        frame.add(new MazeGUI(maze), BorderLayout.CENTER);
+        final MazeGUI gamePanel = new MazeGUI(maze);
+        frame.setJMenuBar(buildMenuBar(frame, gamePanel));
+        frame.add(gamePanel, BorderLayout.CENTER);
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
@@ -664,18 +731,17 @@ public class MazeGUI extends JPanel {
      * @param theFrame the parent frame
      * @return the completed menu bar
      */
-    private static JMenuBar buildMenuBar(final JFrame theFrame) {
+    private static JMenuBar buildMenuBar(final JFrame theFrame,
+                                     final MazeGUI theGamePanel) {
         final JMenuBar bar = new JMenuBar();
         bar.setBackground(GOLD);
         bar.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, GOLD_DARK));
 
         final JMenu fileMenu = styledMenu("File");
         final JMenuItem saveItem = styledItem("Save Game");
-        saveItem.addActionListener(e ->
-                JOptionPane.showMessageDialog(theFrame, "Save coming soon!"));
+        saveItem.addActionListener(e -> theGamePanel.saveGame(theFrame));
         final JMenuItem loadItem = styledItem("Load Game");
-        loadItem.addActionListener(e ->
-                JOptionPane.showMessageDialog(theFrame, "Load coming soon!"));
+        loadItem.addActionListener(e -> theGamePanel.loadGame(theFrame));
         final JMenuItem exitItem = styledItem("Exit");
         exitItem.addActionListener(e -> {
             final int choice = JOptionPane.showConfirmDialog(theFrame,

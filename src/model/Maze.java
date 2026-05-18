@@ -1,4 +1,5 @@
 package model;
+import java.io.Serializable;
 /*
  * Trivia Maze - TCSS 360
  * Spring 2026
@@ -12,7 +13,10 @@ package model;
  * @author Jinal Thummar
  * @version 16th May 2026
  */
-public class Maze {
+public class Maze implements Serializable {
+
+    /** Serialization version number. */
+    private static final long serialVersionUID = 1L;
 
     /** The minimum allowed maze size. */
     private static final int MINIMUM_MAZE_SIZE = 4;
@@ -39,7 +43,7 @@ public class Maze {
     private final int mySize;
 
     /** The factory used to create questions for doors. */
-    private final QuestionFactory myQuestionFactory;
+    private final transient QuestionFactory myQuestionFactory;
 
     /** The current row position of the player. */
     private int myCurrentRow;
