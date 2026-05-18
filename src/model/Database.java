@@ -1,6 +1,6 @@
-package model;/*
- * TCSS 360 - Trivia model.Maze
- * Iteration 1
+/*
+ * TCSS 360 - Trivia Maze
+ * Iteration 3
  */
 
 import java.sql.Connection;
@@ -10,19 +10,18 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * The model.Database class manages the SQLite connection and creates the trivia
- * questions table for the Trivia model.Maze project.
+ * The Database class manages the SQLite connection and creates the trivia
+ * questions table for the Trivia Maze project.
  *
  * @author Jinal
- * @version 3 May 2026
+ * @version 16th May 2026
  */
 public final class Database {
 
     /**
      * The SQLite database connection URL.
      */
-    private static final String DATABASE_URL = "jdbc:sqlite:trivia.db";
-
+    private static final String DATABASE_URL = "jdbc:sqlite:questions.db";
     /**
      * SQL statement used to create the questions table.
      */
@@ -77,7 +76,7 @@ public final class Database {
         try {
             connection = DriverManager.getConnection(DATABASE_URL);
         } catch (final SQLException exception) {
-            System.out.println("model.Database connection error: " + exception.getMessage());
+            System.out.println("Database connection error: " + exception.getMessage());
         }
 
         return connection;
@@ -91,7 +90,7 @@ public final class Database {
         createQuestionsTable();
         insertSampleQuestions();
 
-        System.out.println("model.Database setup finished.");
+        System.out.println("Database setup finished.");
     }
 
     /**

@@ -1,25 +1,44 @@
-package model;
-
 /*
  * Trivia Maze - TCSS 360
  * Spring 2026
- * Author: Suhayr Hassan
  */
 
 /**
  * Represents the Maze for the Trivia Maze game.
- * The maze is a grid of rooms that the player navigates through
- * from the entrance (top-left) to the exit (bottom-right).
- * Adjacent rooms share the same Door object so locking one side
- * locks the other automatically.
  *
  * @author Suhayr Hassan
- * @version 17 May 2026
+ * @author Roman Pavlyshyn
+ * @author Jinal Thummar
+ * @version 16th May 2026
  */
 public class Maze {
 
+    /** The minimum allowed maze size. */
+    private static final int MINIMUM_MAZE_SIZE = 4;
+
+    /** The default database path for trivia questions. */
+    private static final String DEFAULT_DB_PATH = "questions.db";
+
+    /** The north direction. */
+    private static final String NORTH = "north";
+
+    /** The south direction. */
+    private static final String SOUTH = "south";
+
+    /** The east direction. */
+    private static final String EAST = "east";
+
+    /** The west direction. */
+    private static final String WEST = "west";
+
     /** The grid of rooms in the maze. */
     private final Room[][] myRooms;
+
+    /** The size of the maze. */
+    private final int mySize;
+
+    /** The factory used to create questions for doors. */
+    private final QuestionFactory myQuestionFactory;
 
     /** The current row position of the player. */
     private int myCurrentRow;
@@ -27,20 +46,25 @@ public class Maze {
     /** The current column position of the player. */
     private int myCurrentCol;
 
-    /** The size (width and height) of the maze. */
-    private final int mySize;
-
     /**
-     * Constructs a Maze of the given size and initializes all rooms.
+     * Constructs a Maze of the given size and initializes all rooms and doors.
      *
      * @param theSize the number of rows and columns in the maze
      */
     public Maze(final int theSize) {
-        mySize       = theSize;
-        myRooms      = new Room[theSize][theSize];
+        if (theSize < MINIMUM_MAZE_SIZE) {
+            throw new IllegalArgumentException("Maze size must be at least 4.");
+        }
+
+        mySize = theSize;
+        myRooms = new Room[theSize][theSize];
+        myQuestionFactory = new QuestionFactory(DEFAULT_DB_PATH);
         myCurrentRow = 0;
         myCurrentCol = 0;
+
         initializeRooms();
+        initializeDoors();
+        getCurrentRoom().setVisited(true);
     }
 
     /**
@@ -55,29 +79,37 @@ public class Maze {
     }
 
     /**
-     * Initializes doors between all adjacent rooms using questions from the factory.
-     * Adjacent rooms share the same Door object so locking it from either side
-     * affects both rooms.
-     *
-     * @param theFactory the QuestionFactory to get questions from
+     * Connects neighboring rooms with shared doors.
      */
-    public void initializeDoors(final QuestionFactory theFactory) {
+    private void initializeDoors() {
+        initializeHorizontalDoors();
+        initializeVerticalDoors();
+    }
+
+    /**
+     * Connects rooms that are next to each other horizontally.
+     */
+    private void initializeHorizontalDoors() {
         for (int row = 0; row < mySize; row++) {
+            for (int col = 0; col < mySize - 1; col++) {
+                final Door door = new Door(myQuestionFactory.getRandomQuestion());
+
+                myRooms[row][col].addDoor(EAST, door);
+                myRooms[row][col + 1].addDoor(WEST, door);
+            }
+        }
+    }
+
+    /**
+     * Connects rooms that are next to each other vertically.
+     */
+    private void initializeVerticalDoors() {
+        for (int row = 0; row < mySize - 1; row++) {
             for (int col = 0; col < mySize; col++) {
+                final Door door = new Door(myQuestionFactory.getRandomQuestion());
 
-                // Share one Door object between vertically adjacent rooms
-                if (row + 1 < mySize) {
-                    final Door sharedVertical = new Door(theFactory.getRandomQuestion());
-                    myRooms[row][col].addDoor("south", sharedVertical);
-                    myRooms[row + 1][col].addDoor("north", sharedVertical);
-                }
-
-                // Share one Door object between horizontally adjacent rooms
-                if (col + 1 < mySize) {
-                    final Door sharedHorizontal = new Door(theFactory.getRandomQuestion());
-                    myRooms[row][col].addDoor("east", sharedHorizontal);
-                    myRooms[row][col + 1].addDoor("west", sharedHorizontal);
-                }
+                myRooms[row][col].addDoor(SOUTH, door);
+                myRooms[row + 1][col].addDoor(NORTH, door);
             }
         }
     }
@@ -96,12 +128,9 @@ public class Maze {
      *
      * @param theRow the row index
      * @param theCol the column index
-     * @return the Room at the given position, or null if out of bounds
+     * @return the Room at the given position
      */
     public Room getRoom(final int theRow, final int theCol) {
-        if (!isInBounds(theRow, theCol)) {
-            return null;
-        }
         return myRooms[theRow][theCol];
     }
 
@@ -122,11 +151,27 @@ public class Maze {
     public int getCurrentCol() {
         return myCurrentCol;
     }
+    
+    /**
+     * Sets the current player position in the maze.
+     *
+     * @param theRow the row to move the player to
+     * @param theCol the column to move the player to
+     */
+    public void setCurrentPosition(final int theRow, final int theCol) {
+        if (!isInBounds(theRow, theCol)) {
+            throw new IllegalArgumentException("Player position is outside the maze.");
+        }
+
+        myCurrentRow = theRow;
+        myCurrentCol = theCol;
+        getCurrentRoom().setVisited(true);
+    }
 
     /**
      * Returns the size of the maze.
      *
-     * @return the maze size (number of rows/columns)
+     * @return the maze size
      */
     public int getSize() {
         return mySize;
@@ -134,50 +179,47 @@ public class Maze {
 
     /**
      * Attempts to move the player in the given direction.
-     * Movement succeeds only if a door exists in that direction and is not locked.
-     * Marks the destination room as visited on success.
+     * Movement succeeds only if the door in that direction exists and is not locked.
      *
-     * @param theDirection the direction to move ("north", "south", "east", "west")
+     * @param theDirection the direction to move
      * @return true if the move was successful, false otherwise
      */
     public boolean move(final String theDirection) {
-        final Room current = getCurrentRoom();
+        boolean moved = false;
+        final Room currentRoom = getCurrentRoom();
 
-        if (!current.hasDoor(theDirection) || current.isDoorLocked(theDirection)) {
-            return false;
+        if (currentRoom.hasDoor(theDirection) && !currentRoom.isDoorLocked(theDirection)) {
+            final int newRow = myCurrentRow + getRowOffset(theDirection);
+            final int newCol = myCurrentCol + getColOffset(theDirection);
+
+            if (isInBounds(newRow, newCol)) {
+                myCurrentRow = newRow;
+                myCurrentCol = newCol;
+                getCurrentRoom().setVisited(true);
+                moved = true;
+            }
         }
 
-        final int newRow = myCurrentRow + getRowOffset(theDirection);
-        final int newCol = myCurrentCol + getColOffset(theDirection);
-
-        if (!isInBounds(newRow, newCol)) {
-            return false;
-        }
-
-        myCurrentRow = newRow;
-        myCurrentCol = newCol;
-        myRooms[myCurrentRow][myCurrentCol].setVisited(true);
-        return true;
+        return moved;
     }
 
     /**
-     * Returns whether the player has reached the exit (bottom-right room).
+     * Returns whether the player has reached the exit.
      *
-     * @return true if the player is at the exit
+     * @return true if the player is at the exit, false otherwise
      */
     public boolean isGameWon() {
         return myCurrentRow == mySize - 1 && myCurrentCol == mySize - 1;
     }
 
     /**
-     * Returns whether the game is lost — no valid path exists from the
-     * player's current position to the exit using only unlocked doors.
-     * Uses depth-first search to determine reachability.
+     * Returns whether the game is lost because no path exists to the exit.
      *
-     * @return true if no path exists to the exit
+     * @return true if no path exists to the exit, false otherwise
      */
     public boolean isGameOver() {
         final boolean[][] visited = new boolean[mySize][mySize];
+
         return !canReachExit(myCurrentRow, myCurrentCol, visited);
     }
 
@@ -185,15 +227,17 @@ public class Maze {
      * Returns the row offset for a given direction.
      *
      * @param theDirection the direction string
-     * @return the row delta (-1, 0, or 1)
+     * @return the row offset
      */
     private int getRowOffset(final String theDirection) {
         int offset = 0;
-        if ("north".equalsIgnoreCase(theDirection)) {
+
+        if (NORTH.equalsIgnoreCase(theDirection)) {
             offset = -1;
-        } else if ("south".equalsIgnoreCase(theDirection)) {
+        } else if (SOUTH.equalsIgnoreCase(theDirection)) {
             offset = 1;
         }
+
         return offset;
     }
 
@@ -201,15 +245,17 @@ public class Maze {
      * Returns the column offset for a given direction.
      *
      * @param theDirection the direction string
-     * @return the column delta (-1, 0, or 1)
+     * @return the column offset
      */
     private int getColOffset(final String theDirection) {
         int offset = 0;
-        if ("west".equalsIgnoreCase(theDirection)) {
+
+        if (WEST.equalsIgnoreCase(theDirection)) {
             offset = -1;
-        } else if ("east".equalsIgnoreCase(theDirection)) {
+        } else if (EAST.equalsIgnoreCase(theDirection)) {
             offset = 1;
         }
+
         return offset;
     }
 
@@ -218,7 +264,7 @@ public class Maze {
      *
      * @param theRow the row to check
      * @param theCol the column to check
-     * @return true if in bounds
+     * @return true if in bounds, false otherwise
      */
     private boolean isInBounds(final int theRow, final int theCol) {
         return theRow >= 0 && theRow < mySize
@@ -226,59 +272,58 @@ public class Maze {
     }
 
     /**
-     * Recursively checks if the exit can be reached from the given position
-     * using only unlocked doors (depth-first search).
+     * Recursively checks if the exit can be reached from the given position.
      *
-     * @param theRow     the current row being checked
-     * @param theCol     the current column being checked
-     * @param theVisited 2D array tracking visited rooms during search
-     * @return true if the exit is reachable
+     * @param theRow the current row being checked
+     * @param theCol the current column being checked
+     * @param theVisited the rooms already checked
+     * @return true if the exit is reachable, false otherwise
      */
-    private boolean canReachExit(final int theRow, final int theCol,
+    private boolean canReachExit(final int theRow,
+                                 final int theCol,
                                  final boolean[][] theVisited) {
+        boolean canReach = false;
+
         if (theRow == mySize - 1 && theCol == mySize - 1) {
-            return true;
+            canReach = true;
+        } else {
+            theVisited[theRow][theCol] = true;
+
+            canReach = canReachDirection(theRow, theCol, NORTH, theVisited)
+                    || canReachDirection(theRow, theCol, SOUTH, theVisited)
+                    || canReachDirection(theRow, theCol, EAST, theVisited)
+                    || canReachDirection(theRow, theCol, WEST, theVisited);
         }
 
-        theVisited[theRow][theCol] = true;
-
-        final String[] directions = {"north", "south", "east", "west"};
-
-        for (final String dir : directions) {
-            final int newRow = theRow + getRowOffset(dir);
-            final int newCol = theCol + getColOffset(dir);
-
-            if (!isInBounds(newRow, newCol) || theVisited[newRow][newCol]) {
-                continue;
-            }
-
-            final Room room = myRooms[theRow][theCol];
-            if (room.hasDoor(dir) && !room.isDoorLocked(dir)) {
-                if (canReachExit(newRow, newCol, theVisited)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return canReach;
     }
 
     /**
-     * Returns a string representation of the maze.
+     * Checks if the exit can be reached through one direction.
      *
-     * @return a string describing the maze grid
+     * @param theRow the current row
+     * @param theCol the current column
+     * @param theDirection the direction to check
+     * @param theVisited the rooms already checked
+     * @return true if the exit is reachable through that direction
      */
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder();
-        sb.append("Maze [").append(mySize).append("x").append(mySize).append("]\n");
-        sb.append("Player at: (").append(myCurrentRow).append(", ")
-                .append(myCurrentCol).append(")\n");
-        for (int row = 0; row < mySize; row++) {
-            for (int col = 0; col < mySize; col++) {
-                sb.append(myRooms[row][col].toString()).append("\n");
+    private boolean canReachDirection(final int theRow,
+                                      final int theCol,
+                                      final String theDirection,
+                                      final boolean[][] theVisited) {
+        boolean canReach = false;
+
+        final int newRow = theRow + getRowOffset(theDirection);
+        final int newCol = theCol + getColOffset(theDirection);
+
+        if (isInBounds(newRow, newCol) && !theVisited[newRow][newCol]) {
+            final Room room = myRooms[theRow][theCol];
+
+            if (room.hasDoor(theDirection) && !room.isDoorLocked(theDirection)) {
+                canReach = canReachExit(newRow, newCol, theVisited);
             }
         }
-        return sb.toString();
+
+        return canReach;
     }
 }
