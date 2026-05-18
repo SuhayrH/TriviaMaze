@@ -1,12 +1,17 @@
 package model;
 
+import java.io.Serializable;
+
 /**
  * Represents a trivia question in the Trivia model.Maze game.
  *
  * @author Roman Pavlyshyn
- * @version 2 May 2026
+ * @version 17 May 2026
  */
-public abstract class Question {
+public abstract class Question implements Serializable {
+
+    /** Serialization version number. */
+    private static final long serialVersionUID = 1L;
     /**
      * The text shown to the player.
      */

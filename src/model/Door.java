@@ -1,12 +1,15 @@
 package model;
+import java.io.Serializable;
 
 /**
  * Represents a door between rooms in the Trivia model.Maze game.
  *
  * @author Roman Pavlyshyn
- * @version 2 May 2026
+ * @version 17 May 2026
  */
-public class Door {
+public class Door implements Serializable {
+    /** Serialization version number. */
+    private static final long serialVersionUID = 1L;
     /**
      * Whether this door is permanently locked.
      */

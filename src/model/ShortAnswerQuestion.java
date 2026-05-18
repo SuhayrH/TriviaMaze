@@ -7,6 +7,8 @@ package model;
  * @version 2 May 2026
  */
 public class ShortAnswerQuestion extends Question {
+    /** Serialization version number. */
+    private static final long serialVersionUID = 1L;
     /**
      * Creates a new short answer question.
      *
