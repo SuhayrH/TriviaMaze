@@ -19,9 +19,13 @@ import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
+
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -32,6 +36,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
@@ -409,6 +414,7 @@ public class MazeGUI extends JPanel {
         add(buildCharacterBar(), BorderLayout.SOUTH);
 
         updateGrid();
+        setupKeyboardShortcuts();
     }
 
     /**
@@ -882,6 +888,50 @@ public class MazeGUI extends JPanel {
         });
 
         return button;
+    }
+
+    /**
+     * Adds keyboard shortcuts for movement and answer submission.
+     */
+    private void setupKeyboardShortcuts() {
+        final JComponent root = this;
+
+        addKeyboardShortcut(root, "UP", "moveNorth", () -> handleMove("north"));
+        addKeyboardShortcut(root, "W", "moveNorthW", () -> handleMove("north"));
+
+        addKeyboardShortcut(root, "DOWN", "moveSouth", () -> handleMove("south"));
+        addKeyboardShortcut(root, "S", "moveSouthS", () -> handleMove("south"));
+
+        addKeyboardShortcut(root, "LEFT", "moveWest", () -> handleMove("west"));
+        addKeyboardShortcut(root, "A", "moveWestA", () -> handleMove("west"));
+
+        addKeyboardShortcut(root, "RIGHT", "moveEast", () -> handleMove("east"));
+        addKeyboardShortcut(root, "D", "moveEastD", () -> handleMove("east"));
+
+        addKeyboardShortcut(root, "ENTER", "submitAnswer", this::submitAnswer);
+    }
+
+    /**
+     * Adds one keyboard shortcut to the game panel.
+     *
+     * @param theComponent the component receiving the shortcut
+     * @param theKeyStroke the key pressed by the player
+     * @param theActionName the action name
+     * @param theAction the action to run
+     */
+    private void addKeyboardShortcut(final JComponent theComponent,
+                                    final String theKeyStroke,
+                                    final String theActionName,
+                                    final Runnable theAction) {
+        theComponent.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(theKeyStroke), theActionName);
+
+        theComponent.getActionMap().put(theActionName, new AbstractAction() {
+            @Override
+            public void actionPerformed(final java.awt.event.ActionEvent theEvent) {
+                theAction.run();
+            }
+        });
     }
 
     /**
