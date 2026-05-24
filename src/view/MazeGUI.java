@@ -1107,6 +1107,8 @@ public class MazeGUI extends JPanel {
             myQuestionText.setText("Please choose a character before starting the game.");
             setFeedback("choose a character first.", RED_BORDER);
         } else {
+            SoundManager.playStartGame();
+            
             myGameStarted = true;
             myQuestionText.setText("You chose " + CHARACTER_NAMES[mySelectedCharacter]
                     + "!\n\nUse the arrow pad to move between rooms.\n"
@@ -1174,6 +1176,7 @@ public class MazeGUI extends JPanel {
             setFeedback("hint already used for this question.", TEXT_MID);
         } else {
             myHintUsedForQuestion = true;
+             SoundManager.playHint();
             showHintForQuestion(myCurrentDoor.getQuestion());
         }
     }
@@ -1288,6 +1291,8 @@ public class MazeGUI extends JPanel {
      * Handles a correct answer.
      */
     private void handleCorrectAnswer() {
+        SoundManager.playCorrectAnswer();
+
         myMaze.move(myCurrentDirection);
         myCorrectCount++;
         myScoreLabel.setText("SCORE: "
@@ -1307,6 +1312,8 @@ public class MazeGUI extends JPanel {
      */
     private void handleWrongAnswer(final Room theCurrentRoom,
                                    final Question theQuestion) {
+        SoundManager.playWrongAnswer();
+
         theCurrentRoom.lockDoor(myCurrentDirection);
         setFeedback("wrong! door locked. answer was: "
                 + theQuestion.getCorrectAnswer(), RED_BORDER);
@@ -1317,6 +1324,8 @@ public class MazeGUI extends JPanel {
         updateGrid();
 
         if (myMaze.isGameOver()) {
+            SoundManager.playGameOver();
+
             JOptionPane.showMessageDialog(this,
                     "All paths are blocked. Your quest has failed!",
                     "Game Over",
@@ -1351,6 +1360,8 @@ public class MazeGUI extends JPanel {
      */
     private void checkGameState() {
         if (myMaze.isGameWon()) {
+            SoundManager.playWin();
+
             JOptionPane.showMessageDialog(this,
                     "You reached the exit! Quest complete!\nFinal Score: "
                             + String.format("%04d",
@@ -1462,6 +1473,8 @@ public class MazeGUI extends JPanel {
         final boolean saved = GameMemento.saveMaze(myMaze);
 
         if (saved) {
+            SoundManager.playSaveGame();
+
             JOptionPane.showMessageDialog(
                     theFrame,
                     "Game saved successfully.",
@@ -1498,6 +1511,8 @@ public class MazeGUI extends JPanel {
                     JOptionPane.ERROR_MESSAGE);
         } else {
             myMaze = loadedMaze;
+            SoundManager.playLoadGame();
+
             myCurrentDoor = null;
             myCurrentDirection = null;
             myHintUsedForQuestion = false;
