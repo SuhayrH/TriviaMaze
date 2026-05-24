@@ -18,6 +18,7 @@ import java.awt.Image;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -39,14 +40,16 @@ import model.Database;
 import model.Door;
 import model.GameMemento;
 import model.Maze;
+import model.MultipleChoiceQuestion;
 import model.Question;
 import model.QuestionFactory;
 import model.Room;
+import model.TrueFalseQuestion;
 
 /**
  * The main game panel for the Trivia Maze game.
  * This class displays the maze, character selection, question area,
- * answer input, score, menus, and navigation controls.
+ * answer input, score, menus, navigation controls, and hint support.
  *
  * @author Suhayr Hassan
  * @author Jinal Thummar
@@ -119,6 +122,11 @@ public class MazeGUI extends JPanel {
      * Main window height.
      */
     private static final int WINDOW_HEIGHT = 780;
+
+    /**
+     * First character position used for hints.
+     */
+    private static final int FIRST_CHARACTER_INDEX = 0;
 
     /**
      * Sky blue color.
@@ -295,6 +303,11 @@ public class MazeGUI extends JPanel {
     private int myCorrectCount;
 
     /**
+     * Whether a hint has already been used for the current question.
+     */
+    private boolean myHintUsedForQuestion;
+
+    /**
      * Grid cell panels.
      */
     private final JPanel[][] myGridCells;
@@ -330,6 +343,11 @@ public class MazeGUI extends JPanel {
     private final JButton mySubmitButton;
 
     /**
+     * Hint button.
+     */
+    private final JButton myHintButton;
+
+    /**
      * Feedback label.
      */
     private final JLabel myFeedbackLabel;
@@ -354,6 +372,7 @@ public class MazeGUI extends JPanel {
         myCurrentDoor = null;
         myCurrentDirection = null;
         myCorrectCount = 0;
+        myHintUsedForQuestion = false;
         myGridCells = new JPanel[mySize][mySize];
         myCharacterCards = new JPanel[CHARACTER_COUNT];
         myCharacterIcons = new ImageIcon[CHARACTER_COUNT];
@@ -367,6 +386,7 @@ public class MazeGUI extends JPanel {
         myQuestionText = buildQuestionArea();
         myAnswerField = buildAnswerField();
         mySubmitButton = buildSubmitButton();
+        myHintButton = buildHintButton();
 
         myFeedbackLabel = new JLabel("> pick a character and press start");
         myFeedbackLabel.setFont(MONO_SMALL);
@@ -446,9 +466,10 @@ public class MazeGUI extends JPanel {
                         + "2. Press START GAME.\n"
                         + "3. Use the arrow pad to move between rooms.\n"
                         + "4. Answer trivia questions to unlock doors.\n"
-                        + "5. Wrong answer = door locked permanently.\n"
-                        + "6. Reach the exit (*) to win.\n"
-                        + "7. If all paths are blocked, game over.",
+                        + "5. Use HINT for help during a question.\n"
+                        + "6. Wrong answer = door locked permanently.\n"
+                        + "7. Reach the exit (*) to win.\n"
+                        + "8. If all paths are blocked, game over.",
                 "How to Play",
                 JOptionPane.INFORMATION_MESSAGE));
 
@@ -661,7 +682,7 @@ public class MazeGUI extends JPanel {
         panel.add(myAnswerField, constraints);
 
         constraints.gridy = 4;
-        panel.add(mySubmitButton, constraints);
+        panel.add(buildAnswerButtonPanel(), constraints);
 
         constraints.gridy = 5;
         panel.add(myFeedbackLabel, constraints);
@@ -728,6 +749,42 @@ public class MazeGUI extends JPanel {
         button.addActionListener(theEvent -> submitAnswer());
 
         return button;
+    }
+
+    /**
+     * Builds the hint button.
+     *
+     * @return the hint button
+     */
+    private JButton buildHintButton() {
+        final JButton button = new JButton("[ HINT ]");
+
+        button.setFont(MONO_BOLD);
+        button.setForeground(new Color(240, 248, 224));
+        button.setBackground(GOLD_BORDER);
+        button.setOpaque(true);
+        button.setBorderPainted(true);
+        button.setBorder(BorderFactory.createLineBorder(GOLD_DARK, 3));
+        button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.addActionListener(theEvent -> showHint());
+
+        return button;
+    }
+
+    /**
+     * Builds the panel containing the submit and hint buttons.
+     *
+     * @return the answer button panel
+     */
+    private JPanel buildAnswerButtonPanel() {
+        final JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 6, 0));
+
+        buttonPanel.setBackground(GOLD);
+        buttonPanel.add(mySubmitButton);
+        buttonPanel.add(myHintButton);
+
+        return buttonPanel;
     }
 
     /**
@@ -1098,10 +1155,102 @@ public class MazeGUI extends JPanel {
     private void showCurrentQuestion() {
         final Question question = myCurrentDoor.getQuestion();
 
+        myHintUsedForQuestion = false;
         myQuestionText.setText(question.getQuestionText());
         myAnswerField.setText("");
         myAnswerField.requestFocus();
         setFeedback("type your answer and press submit.", TEXT_MID);
+    }
+
+    /**
+     * Shows a hint for the current question.
+     */
+    private void showHint() {
+        if (!myGameStarted) {
+            setFeedback("choose your character and press START first!", RED_BORDER);
+        } else if (myCurrentDoor == null) {
+            setFeedback("press an arrow to pick a question first.", TEXT_MID);
+        } else if (myHintUsedForQuestion) {
+            setFeedback("hint already used for this question.", TEXT_MID);
+        } else {
+            myHintUsedForQuestion = true;
+            showHintForQuestion(myCurrentDoor.getQuestion());
+        }
+    }
+
+    /**
+     * Shows a hint based on the current question type.
+     *
+     * @param theQuestion the current question
+     */
+    private void showHintForQuestion(final Question theQuestion) {
+        final String hintText;
+
+        if (theQuestion instanceof MultipleChoiceQuestion) {
+            hintText = buildMultipleChoiceHint((MultipleChoiceQuestion) theQuestion);
+        } else if (theQuestion instanceof TrueFalseQuestion) {
+            hintText = "Hint: answer True or False.";
+        } else {
+            hintText = buildShortAnswerHint(theQuestion.getCorrectAnswer());
+        }
+
+        myQuestionText.setText(myQuestionText.getText() + "\n\n" + hintText);
+        setFeedback("hint used.", TEXT_MID);
+    }
+
+    /**
+     * Builds a hint for a multiple choice question.
+     *
+     * @param theQuestion the multiple choice question
+     * @return the hint text
+     */
+    private String buildMultipleChoiceHint(final MultipleChoiceQuestion theQuestion) {
+        final StringBuilder hintText = new StringBuilder("Hint: choices are ");
+        final List<String> choices = theQuestion.getChoices();
+
+        if (choices.isEmpty()) {
+            hintText.append("not available");
+        } else {
+            appendChoices(hintText, choices);
+        }
+
+        hintText.append(".");
+
+        return hintText.toString();
+    }
+
+    /**
+     * Appends multiple choice options to a hint.
+     *
+     * @param theHintText the hint text builder
+     * @param theChoices the answer choices
+     */
+    private void appendChoices(final StringBuilder theHintText,
+                               final List<String> theChoices) {
+        for (int i = 0; i < theChoices.size(); i++) {
+            if (i > 0) {
+                theHintText.append(", ");
+            }
+
+            theHintText.append(theChoices.get(i));
+        }
+    }
+
+    /**
+     * Builds a hint for a short answer question.
+     *
+     * @param theAnswer the correct answer
+     * @return the hint text
+     */
+    private String buildShortAnswerHint(final String theAnswer) {
+        String hintText = "Hint: no hint is available for this answer.";
+
+        if (theAnswer != null && !theAnswer.isEmpty()) {
+            hintText = "Hint: starts with '" + theAnswer.charAt(FIRST_CHARACTER_INDEX)
+                    + "' and has " + theAnswer.length() + " characters.";
+        }
+
+        return hintText;
     }
 
     /**
@@ -1182,6 +1331,7 @@ public class MazeGUI extends JPanel {
         myAnswerField.setText("");
         myCurrentDoor = null;
         myCurrentDirection = null;
+        myHintUsedForQuestion = false;
     }
 
     /**
@@ -1350,6 +1500,7 @@ public class MazeGUI extends JPanel {
             myMaze = loadedMaze;
             myCurrentDoor = null;
             myCurrentDirection = null;
+            myHintUsedForQuestion = false;
             myGameStarted = true;
 
             if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
