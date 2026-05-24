@@ -287,6 +287,9 @@ public class MazeGUI extends JPanel {
      */
     private boolean myGameStarted;
 
+    /** Whether the current game session has ended. */
+    private boolean myGameEnded;
+
     /**
      * Current selected door.
      */
@@ -369,6 +372,7 @@ public class MazeGUI extends JPanel {
         mySize = theMaze.getSize();
         mySelectedCharacter = NO_SELECTED_CHARACTER;
         myGameStarted = false;
+        myGameEnded = false;
         myCurrentDoor = null;
         myCurrentDirection = null;
         myCorrectCount = 0;
@@ -1106,10 +1110,11 @@ public class MazeGUI extends JPanel {
         if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
             myQuestionText.setText("Please choose a character before starting the game.");
             setFeedback("choose a character first.", RED_BORDER);
+        } else if (myGameEnded) {
+            resetGame();
         } else {
-            SoundManager.playStartGame();
-            
             myGameStarted = true;
+            myGameEnded = false;
             myQuestionText.setText("You chose " + CHARACTER_NAMES[mySelectedCharacter]
                     + "!\n\nUse the arrow pad to move between rooms.\n"
                     + "Answer trivia questions correctly to unlock doors.");
@@ -1118,14 +1123,16 @@ public class MazeGUI extends JPanel {
             updateGrid();
         }
     }
-
+    
     /**
      * Handles a movement attempt.
      *
      * @param theDirection the movement direction
      */
     private void handleMove(final String theDirection) {
-        if (!myGameStarted) {
+        if (myGameEnded) {
+            setFeedback("game is over. start a new game or exit.", RED_BORDER);
+        } else if (!myGameStarted) {
             setFeedback("choose your character and press START first!", RED_BORDER);
         } else {
             handleStartedMove(theDirection);
@@ -1168,7 +1175,9 @@ public class MazeGUI extends JPanel {
      * Shows a hint for the current question.
      */
     private void showHint() {
-        if (!myGameStarted) {
+        if (myGameEnded) {
+            setFeedback("game is over. start a new game or exit.", RED_BORDER);
+        } else if (!myGameStarted) {
             setFeedback("choose your character and press START first!", RED_BORDER);
         } else if (myCurrentDoor == null) {
             setFeedback("press an arrow to pick a question first.", TEXT_MID);
@@ -1176,7 +1185,6 @@ public class MazeGUI extends JPanel {
             setFeedback("hint already used for this question.", TEXT_MID);
         } else {
             myHintUsedForQuestion = true;
-             SoundManager.playHint();
             showHintForQuestion(myCurrentDoor.getQuestion());
         }
     }
@@ -1260,7 +1268,9 @@ public class MazeGUI extends JPanel {
      * Submits the typed answer.
      */
     private void submitAnswer() {
-        if (!myGameStarted) {
+        if (myGameEnded) {
+            setFeedback("game is over. start a new game or exit.", RED_BORDER);
+        } else if (!myGameStarted) {
             setFeedback("choose your character and press START first!", RED_BORDER);
         } else if (myCurrentDoor == null) {
             setFeedback("press an arrow to pick a direction first.", TEXT_MID);
@@ -1325,11 +1335,7 @@ public class MazeGUI extends JPanel {
 
         if (myMaze.isGameOver()) {
             SoundManager.playGameOver();
-
-            JOptionPane.showMessageDialog(this,
-                    "All paths are blocked. Your quest has failed!",
-                    "Game Over",
-                    JOptionPane.ERROR_MESSAGE);
+            endGame(false);
         }
     }
 
@@ -1361,14 +1367,99 @@ public class MazeGUI extends JPanel {
     private void checkGameState() {
         if (myMaze.isGameWon()) {
             SoundManager.playWin();
-
-            JOptionPane.showMessageDialog(this,
-                    "You reached the exit! Quest complete!\nFinal Score: "
-                            + String.format("%04d",
-                            myCorrectCount * POINTS_PER_CORRECT_ANSWER),
-                    "Victory!",
-                    JOptionPane.INFORMATION_MESSAGE);
+            endGame(true);
         }
+    }
+
+    /**
+     * Ends the current game session.
+     *
+     * @param theWon whether the player won
+     */
+    private void endGame(final boolean theWon) {
+        myGameEnded = true;
+        myCurrentDoor = null;
+        myCurrentDirection = null;
+        myAnswerField.setText("");
+
+        if (theWon) {
+            setFeedback("victory! choose new game or exit.", GREEN_BUTTON);
+            myQuestionText.setText("You reached the exit!\n\nFinal Score: "
+                    + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER));
+        } else {
+            setFeedback("game over! choose new game or exit.", RED_BORDER);
+            myQuestionText.setText("All paths are blocked.\n\nYour quest has failed.");
+        }
+
+        showEndGameDialog(theWon);
+    }
+
+    /**
+     * Shows the end-game dialog with New Game and Exit options.
+     *
+     * @param theWon whether the player won
+     */
+    private void showEndGameDialog(final boolean theWon) {
+        final String title = theWon ? "Victory!" : "Game Over";
+        final String message;
+
+        if (theWon) {
+            message = "You reached the exit!\nFinal Score: "
+                    + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER)
+                    + "\n\nWhat would you like to do?";
+        } else {
+            message = "All paths are blocked. Your quest has failed!\n\nWhat would you like to do?";
+        }
+
+        final Object[] options = {"New Game", "Exit"};
+        final int choice = JOptionPane.showOptionDialog(
+                this,
+                message,
+                title,
+                JOptionPane.YES_NO_OPTION,
+                theWon ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE,
+                null,
+                options,
+                options[0]);
+
+        if (choice == JOptionPane.YES_OPTION) {
+            resetGame();
+        } else if (choice == JOptionPane.NO_OPTION) {
+            final java.awt.Window window = SwingUtilities.getWindowAncestor(this);
+
+            if (window != null) {
+                window.dispose();
+            } else {
+                System.exit(0);
+            }
+        }
+    }
+
+    /**
+     * Resets the game with a fresh maze while keeping the selected character.
+     */
+    private void resetGame() {
+        Database.init();
+
+        final QuestionFactory factory = new QuestionFactory("trivia.db");
+        final Maze newMaze = new Maze(mySize);
+        newMaze.initializeDoors(factory);
+
+        myMaze = newMaze;
+        myGameStarted = true;
+        myGameEnded = false;
+        myCurrentDoor = null;
+        myCurrentDirection = null;
+        myCorrectCount = 0;
+        myHintUsedForQuestion = false;
+
+        myScoreLabel.setText("SCORE: 0000");
+        myAnswerField.setText("");
+        myQuestionText.setText("New game started!\n\nUse the arrow pad to move between rooms.");
+        setFeedback("new quest begins!", TEXT_DARK);
+
+        refreshCharacterBar();
+        updateGrid();
     }
 
     /**
@@ -1517,6 +1608,7 @@ public class MazeGUI extends JPanel {
             myCurrentDirection = null;
             myHintUsedForQuestion = false;
             myGameStarted = true;
+            myGameEnded = false;
 
             if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
                 mySelectedCharacter = 0;
