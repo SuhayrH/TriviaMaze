@@ -1,3 +1,5 @@
+package model;
+import java.io.Serializable;
 /*
  * Trivia Maze - TCSS 360
  * Spring 2026
@@ -11,7 +13,10 @@
  * @author Jinal Thummar
  * @version 16th May 2026
  */
-public class Maze {
+public class Maze implements Serializable {
+
+    /** Serialization version number. */
+    private static final long serialVersionUID = 1L;
 
     /** The minimum allowed maze size. */
     private static final int MINIMUM_MAZE_SIZE = 4;
@@ -38,7 +43,7 @@ public class Maze {
     private final int mySize;
 
     /** The factory used to create questions for doors. */
-    private final QuestionFactory myQuestionFactory;
+    private final transient QuestionFactory myQuestionFactory;
 
     /** The current row position of the player. */
     private int myCurrentRow;
@@ -84,6 +89,18 @@ public class Maze {
     private void initializeDoors() {
         initializeHorizontalDoors();
         initializeVerticalDoors();
+    }
+
+    /**
+     * Initializes doors between all adjacent rooms.
+     *
+     * This overload accepts a QuestionFactory for compatibility with GUI code.
+     * The current Maze implementation handles question assignment internally.
+     *
+     * @param theFactory the question factory used by older GUI calls
+     */
+    public void initializeDoors(final QuestionFactory theFactory) {
+        initializeDoors();
     }
 
     /**
@@ -213,14 +230,33 @@ public class Maze {
     }
 
     /**
+     * Returns whether there is still an unlocked path from the player's
+     * current room to the exit room.
+     *
+     * @return true if the exit can still be reached, false otherwise
+     */
+    public boolean hasPathToExit() {
+        final boolean[][] visited = new boolean[mySize][mySize];
+        return canReachExit(myCurrentRow, myCurrentCol, visited);
+    }
+
+    /**
+     * Returns whether the game is lost because no unlocked path exists
+     * from the player's current room to the exit.
+     *
+     * @return true if the game is lost, false otherwise
+     */
+    public boolean isGameLost() {
+        return !hasPathToExit();
+    }
+
+    /**
      * Returns whether the game is lost because no path exists to the exit.
      *
      * @return true if no path exists to the exit, false otherwise
      */
     public boolean isGameOver() {
-        final boolean[][] visited = new boolean[mySize][mySize];
-
-        return !canReachExit(myCurrentRow, myCurrentCol, visited);
+        return isGameLost();
     }
 
     /**

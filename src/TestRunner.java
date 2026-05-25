@@ -6,11 +6,17 @@
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import model.Database;
+import model.GameMemento;
+import model.Maze;
+import model.Room;
+
 /**
  * Runs backend tests for the Trivia Maze project.
  *
  * @author Jinal Thummar
- * @version 17 May 2026
+ * @author Roman Pavlyshyn
+ * @version 18 May 2026
  */
 public final class TestRunner {
 
@@ -65,6 +71,16 @@ public final class TestRunner {
     private static final String SAVE_FILE_NAME = "savegame.txt";
 
     /**
+     * The south direction.
+     */
+    private static final String SOUTH = "south";
+
+    /**
+     * The east direction.
+     */
+    private static final String EAST = "east";
+
+    /**
      * Private constructor to prevent instantiation.
      */
     private TestRunner() {
@@ -78,6 +94,8 @@ public final class TestRunner {
     public static void main(final String[] theArgs) {
         Database.init();
         testGameMementoRestoresMazePosition();
+        testMazeStartsWithPathToExit();
+        testMazeDetectsLossWhenStartIsBlocked();
     }
 
     /**
@@ -143,5 +161,57 @@ public final class TestRunner {
         final int savedCol = Integer.parseInt(parts[SAVED_COL_INDEX]);
 
         theMaze.setCurrentPosition(savedRow, savedCol);
+    }
+
+    /**
+     * Tests that a newly created maze has a valid path from the entrance
+     * to the exit before any doors are locked.
+     */
+    private static void testMazeStartsWithPathToExit() {
+        final Maze maze = new Maze(TEST_MAZE_SIZE);
+
+        final boolean hasPath = maze.hasPathToExit();
+        final boolean gameLost = maze.isGameLost();
+        final boolean gameOver = maze.isGameOver();
+
+        System.out.println();
+        System.out.println("Maze initial path test:");
+        System.out.println("Has path to exit: " + hasPath);
+        System.out.println("Game lost: " + gameLost);
+        System.out.println("Game over: " + gameOver);
+
+        if (hasPath && !gameLost && !gameOver) {
+            System.out.println("Maze initial path test passed.");
+        } else {
+            System.out.println("Maze initial path test failed.");
+        }
+    }
+
+    /**
+     * Tests that the maze detects a loss when the starting room has no
+     * unlocked path to the exit.
+     */
+    private static void testMazeDetectsLossWhenStartIsBlocked() {
+        final Maze maze = new Maze(TEST_MAZE_SIZE);
+        final Room startingRoom = maze.getCurrentRoom();
+
+        startingRoom.lockDoor(EAST);
+        startingRoom.lockDoor(SOUTH);
+
+        final boolean hasPath = maze.hasPathToExit();
+        final boolean gameLost = maze.isGameLost();
+        final boolean gameOver = maze.isGameOver();
+
+        System.out.println();
+        System.out.println("Maze blocked path test:");
+        System.out.println("Has path to exit: " + hasPath);
+        System.out.println("Game lost: " + gameLost);
+        System.out.println("Game over: " + gameOver);
+
+        if (!hasPath && gameLost && gameOver) {
+            System.out.println("Maze blocked path test passed.");
+        } else {
+            System.out.println("Maze blocked path test failed.");
+        }
     }
 }

@@ -7,6 +7,9 @@ package model;
  * @version 2 May 2026
  */
 public class TrueFalseQuestion extends Question {
+
+    /** Serialization version number. */
+    private static final long serialVersionUID = 1L;
     /**
      * Creates a new true or false question.
      *

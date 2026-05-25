@@ -10,6 +10,8 @@ import java.util.List;
  * @version 2 May 2026
  */
 public class MultipleChoiceQuestion extends Question {
+    /** Serialization version number. */
+    private static final long serialVersionUID = 1L;
     /**
      * The answer choices for this question.
      */

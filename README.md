@@ -14,6 +14,10 @@ through a maze by answering trivia questions.
 - Java
 - SQLite
 - Java Swing (JFrame)
+- SQLite JDBC Driver
+- GitHub
+- YouTrack
+- VS Code
 
 # Iteration 1 Summary:
 During Iteration 1, the team focused on setting up the project, creating user stories and tasks in YouTrack, setting up the GitHub repository, and beginning implementation of the main classes for the Trivia model.Maze game.
@@ -38,5 +42,10 @@ During Iteration 2, the team continued working on the Trivia Maze game by improv
 - TM-39 and TM-40 are working through backend and terminal tests, but the GUI does not yet fully show the database question gameplay.
 - Full save/load testing and File menu improvements still need more work.
 - The project still needs more MVC organization in future iterations.
+
+#Iteration 3 summary:
+
+During Iteration 3, the team focused on improving the Trivia Maze game by creating and updating the GUI, adding character selection, sprites, and better project package organization. The team also improved File menu Save Game and Load Game integration, tested GameMemento save/load behavior, resolved SQLite driver and questions.db setup issues, and continued cleaning up database and persistence-related code.
+
 
 
