@@ -47,5 +47,15 @@ During Iteration 2, the team continued working on the Trivia Maze game by improv
 
 During Iteration 3, the team focused on improving the Trivia Maze game by creating and updating the GUI, adding character selection, sprites, and better project package organization. The team also improved File menu Save Game and Load Game integration, tested GameMemento save/load behavior, resolved SQLite driver and questions.db setup issues, and continued cleaning up database and persistence-related code.
 
+Iteration 4 Summary:
+
+During Iteration 4, the team focused on polishing gameplay features and improving the overall user experience of the Trivia Maze game. The team implemented a QuestionTimer.java class in the view package that displays a 20-second countdown when a trivia question appears, automatically locking the door if the player does not answer in time. A RoomFlasher.java class was also added to flash the current room cell green for a correct answer and red for a wrong answer. A hint button was added to MazeGUI, sound effects were generated for game events, character selection was fixed, keyboard shortcuts for maze navigation were added, and the end game flow including new game and exit options was implemented.
+Issues / Problems During Iteration 4:
+
+MazeGUI has become very cluttered with too many features handled in a single class.
+The team is actively working on separating features into their own dedicated classes and is close to completing this refactor.
+Keyboard shortcuts required handling edge cases where key bindings conflicted with existing input listeners.
+The QuestionTimer required careful synchronization to ensure it cancelled correctly when a player answered before time ran out.
+
 
 
