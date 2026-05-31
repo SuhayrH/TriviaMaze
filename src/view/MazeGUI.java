@@ -5,6 +5,7 @@
 
 package view;
 
+import controller.GameController;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -18,14 +19,9 @@ import java.awt.Image;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.List;
-
-import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JComponent;
-import javax.swing.KeyStroke;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -36,20 +32,14 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import model.Database;
-import model.Door;
-import model.GameMemento;
 import model.Maze;
-import model.MultipleChoiceQuestion;
 import model.Question;
 import model.QuestionFactory;
-import model.Room;
-import model.TrueFalseQuestion;
 
 /**
  * The main game panel for the Trivia Maze game.
@@ -59,7 +49,7 @@ import model.TrueFalseQuestion;
  * @author Suhayr Hassan
  * @author Jinal Thummar
  * @author Roman Pavlyshyn
- * @version 24 May 2026
+ * @version 31 May 2026
  */
 public class MazeGUI extends JPanel {
 
@@ -127,11 +117,6 @@ public class MazeGUI extends JPanel {
      * Main window height.
      */
     private static final int WINDOW_HEIGHT = 780;
-
-    /**
-     * First character position used for hints.
-     */
-    private static final int FIRST_CHARACTER_INDEX = 0;
 
     /**
      * Sky blue color.
@@ -236,7 +221,8 @@ public class MazeGUI extends JPanel {
     /**
      * Extra large monospaced font.
      */
-    private static final Font MONO_EXTRA_LARGE = new Font("Monospaced", Font.BOLD, 16);
+    private static final Font MONO_EXTRA_LARGE =
+            new Font("Monospaced", Font.BOLD, 16);
 
     /**
      * Character names.
@@ -273,9 +259,34 @@ public class MazeGUI extends JPanel {
     private static final String DPAD_RIGHT_IMAGE = "src/sprites/right.png";
 
     /**
+     * North direction.
+     */
+    private static final String NORTH = "north";
+
+    /**
+     * South direction.
+     */
+    private static final String SOUTH = "south";
+
+    /**
+     * East direction.
+     */
+    private static final String EAST = "east";
+
+    /**
+     * West direction.
+     */
+    private static final String WEST = "west";
+
+    /**
      * Maze model.
      */
     private Maze myMaze;
+
+    /**
+     * Controller used to coordinate gameplay actions.
+     */
+    private final GameController myController;
 
     /**
      * Maze size.
@@ -292,28 +303,15 @@ public class MazeGUI extends JPanel {
      */
     private boolean myGameStarted;
 
-    /** Whether the current game session has ended. */
+    /**
+     * Whether the current game session has ended.
+     */
     private boolean myGameEnded;
-
-    /**
-     * Current selected door.
-     */
-    private Door myCurrentDoor;
-
-    /**
-     * Current movement direction.
-     */
-    private String myCurrentDirection;
 
     /**
      * Correct answer count.
      */
     private int myCorrectCount;
-
-    /**
-     * Whether a hint has already been used for the current question.
-     */
-    private boolean myHintUsedForQuestion;
 
     /**
      * Grid cell panels.
@@ -374,14 +372,12 @@ public class MazeGUI extends JPanel {
         super(new BorderLayout());
 
         myMaze = theMaze;
+        myController = new GameController(theMaze);
         mySize = theMaze.getSize();
         mySelectedCharacter = NO_SELECTED_CHARACTER;
         myGameStarted = false;
         myGameEnded = false;
-        myCurrentDoor = null;
-        myCurrentDirection = null;
         myCorrectCount = 0;
-        myHintUsedForQuestion = false;
         myGridCells = new JPanel[mySize][mySize];
         myCharacterCards = new JPanel[CHARACTER_COUNT];
         myCharacterIcons = new ImageIcon[CHARACTER_COUNT];
@@ -414,7 +410,6 @@ public class MazeGUI extends JPanel {
         add(buildCharacterBar(), BorderLayout.SOUTH);
 
         updateGrid();
-        setupKeyboardShortcuts();
     }
 
     /**
@@ -505,8 +500,10 @@ public class MazeGUI extends JPanel {
      */
     private static JMenu styledMenu(final String theText) {
         final JMenu menu = new JMenu(theText);
+
         menu.setFont(MONO_BOLD);
         menu.setForeground(BROWN);
+
         return menu;
     }
 
@@ -518,9 +515,11 @@ public class MazeGUI extends JPanel {
      */
     private static JMenuItem styledItem(final String theText) {
         final JMenuItem item = new JMenuItem(theText);
+
         item.setFont(MONO_MEDIUM);
         item.setBackground(GOLD);
         item.setForeground(TEXT_DARK);
+
         return item;
     }
 
@@ -814,19 +813,19 @@ public class MazeGUI extends JPanel {
 
         constraints.gridx = 1;
         constraints.gridy = 0;
-        wrap.add(buildDpadButton(DPAD_UP_IMAGE, "north"), constraints);
+        wrap.add(buildDpadButton(DPAD_UP_IMAGE, NORTH), constraints);
 
         constraints.gridx = 0;
         constraints.gridy = 1;
-        wrap.add(buildDpadButton(DPAD_LEFT_IMAGE, "west"), constraints);
+        wrap.add(buildDpadButton(DPAD_LEFT_IMAGE, WEST), constraints);
 
         constraints.gridx = 2;
         constraints.gridy = 1;
-        wrap.add(buildDpadButton(DPAD_RIGHT_IMAGE, "east"), constraints);
+        wrap.add(buildDpadButton(DPAD_RIGHT_IMAGE, EAST), constraints);
 
         constraints.gridx = 1;
         constraints.gridy = 2;
-        wrap.add(buildDpadButton(DPAD_DOWN_IMAGE, "south"), constraints);
+        wrap.add(buildDpadButton(DPAD_DOWN_IMAGE, SOUTH), constraints);
 
         nub.setBackground(SAND_DARK);
         nub.setPreferredSize(new Dimension(DPAD_BUTTON_SIZE, DPAD_BUTTON_SIZE));
@@ -888,50 +887,6 @@ public class MazeGUI extends JPanel {
         });
 
         return button;
-    }
-
-    /**
-     * Adds keyboard shortcuts for movement and answer submission.
-     */
-    private void setupKeyboardShortcuts() {
-        final JComponent root = this;
-
-        addKeyboardShortcut(root, "UP", "moveNorth", () -> handleMove("north"));
-        addKeyboardShortcut(root, "W", "moveNorthW", () -> handleMove("north"));
-
-        addKeyboardShortcut(root, "DOWN", "moveSouth", () -> handleMove("south"));
-        addKeyboardShortcut(root, "S", "moveSouthS", () -> handleMove("south"));
-
-        addKeyboardShortcut(root, "LEFT", "moveWest", () -> handleMove("west"));
-        addKeyboardShortcut(root, "A", "moveWestA", () -> handleMove("west"));
-
-        addKeyboardShortcut(root, "RIGHT", "moveEast", () -> handleMove("east"));
-        addKeyboardShortcut(root, "D", "moveEastD", () -> handleMove("east"));
-
-        addKeyboardShortcut(root, "ENTER", "submitAnswer", this::submitAnswer);
-    }
-
-    /**
-     * Adds one keyboard shortcut to the game panel.
-     *
-     * @param theComponent the component receiving the shortcut
-     * @param theKeyStroke the key pressed by the player
-     * @param theActionName the action name
-     * @param theAction the action to run
-     */
-    private void addKeyboardShortcut(final JComponent theComponent,
-                                    final String theKeyStroke,
-                                    final String theActionName,
-                                    final Runnable theAction) {
-        theComponent.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke(theKeyStroke), theActionName);
-
-        theComponent.getActionMap().put(theActionName, new AbstractAction() {
-            @Override
-            public void actionPerformed(final java.awt.event.ActionEvent theEvent) {
-                theAction.run();
-            }
-        });
     }
 
     /**
@@ -1002,12 +957,14 @@ public class MazeGUI extends JPanel {
         final JPanel card = new JPanel(new GridBagLayout());
         final JLabel sprite = new JLabel(myCharacterIcons[theIndex]);
         final int index = theIndex;
-        final MouseAdapter characterMouseListener = buildCharacterMouseListener(card, index);
+        final MouseAdapter characterMouseListener =
+                buildCharacterMouseListener(card, index);
 
         card.setBackground(theIndex == mySelectedCharacter ? SAND_LIGHT : SAND);
         card.setBorder(getCharacterCardBorder(theIndex));
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        card.setPreferredSize(new Dimension(CHARACTER_CARD_WIDTH, CHARACTER_CARD_HEIGHT));
+        card.setPreferredSize(new Dimension(CHARACTER_CARD_WIDTH,
+                CHARACTER_CARD_HEIGHT));
 
         sprite.setHorizontalAlignment(SwingConstants.CENTER);
         sprite.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -1086,6 +1043,7 @@ public class MazeGUI extends JPanel {
      */
     private void selectCharacter(final int theIndex) {
         mySelectedCharacter = theIndex;
+        myController.selectCharacter(theIndex);
         refreshCharacterBar();
         updateGrid();
         setFeedback("selected " + CHARACTER_NAMES[mySelectedCharacter] + ".", TEXT_DARK);
@@ -1157,12 +1115,13 @@ public class MazeGUI extends JPanel {
      * Starts the game.
      */
     private void startGame() {
-        if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
+        if (!myController.startGame()) {
             myQuestionText.setText("Please choose a character before starting the game.");
             setFeedback("choose a character first.", RED_BORDER);
         } else if (myGameEnded) {
             resetGame();
         } else {
+            SoundManager.playStartGame();
             myGameStarted = true;
             myGameEnded = false;
             myQuestionText.setText("You chose " + CHARACTER_NAMES[mySelectedCharacter]
@@ -1173,7 +1132,7 @@ public class MazeGUI extends JPanel {
             updateGrid();
         }
     }
-    
+
     /**
      * Handles a movement attempt.
      *
@@ -1195,15 +1154,12 @@ public class MazeGUI extends JPanel {
      * @param theDirection the movement direction
      */
     private void handleStartedMove(final String theDirection) {
-        final Room current = myMaze.getCurrentRoom();
-
-        if (!current.hasDoor(theDirection)) {
+        if (!myController.currentRoomHasDoor(theDirection)) {
             setFeedback("no path to the " + theDirection + ".", TEXT_MID);
-        } else if (current.isDoorLocked(theDirection)) {
+        } else if (myController.isCurrentRoomDoorLocked(theDirection)) {
             setFeedback("that door is permanently locked!", RED_BORDER);
         } else {
-            myCurrentDoor = current.getDoor(theDirection);
-            myCurrentDirection = theDirection;
+            myController.chooseDoor(theDirection);
             showCurrentQuestion();
         }
     }
@@ -1212,13 +1168,14 @@ public class MazeGUI extends JPanel {
      * Shows the current door question.
      */
     private void showCurrentQuestion() {
-        final Question question = myCurrentDoor.getQuestion();
+        final Question question = myController.getCurrentQuestion();
 
-        myHintUsedForQuestion = false;
-        myQuestionText.setText(question.getQuestionText());
-        myAnswerField.setText("");
-        myAnswerField.requestFocus();
-        setFeedback("type your answer and press submit.", TEXT_MID);
+        if (question != null) {
+            myQuestionText.setText(question.getQuestionText());
+            myAnswerField.setText("");
+            myAnswerField.requestFocus();
+            setFeedback("type your answer and press submit.", TEXT_MID);
+        }
     }
 
     /**
@@ -1227,91 +1184,18 @@ public class MazeGUI extends JPanel {
     private void showHint() {
         if (myGameEnded) {
             setFeedback("game is over. start a new game or exit.", RED_BORDER);
-        } else if (!myGameStarted) {
+        } else if (!myController.isGameStarted()) {
             setFeedback("choose your character and press START first!", RED_BORDER);
-        } else if (myCurrentDoor == null) {
+        } else if (!myController.hasCurrentQuestion()) {
             setFeedback("press an arrow to pick a question first.", TEXT_MID);
-        } else if (myHintUsedForQuestion) {
+        } else if (myController.isHintUsedForQuestion()) {
             setFeedback("hint already used for this question.", TEXT_MID);
         } else {
-            myHintUsedForQuestion = true;
-            showHintForQuestion(myCurrentDoor.getQuestion());
+            SoundManager.playHint();
+            myQuestionText.setText(myQuestionText.getText()
+                    + "\n\n" + myController.useHint());
+            setFeedback("hint used.", TEXT_MID);
         }
-    }
-
-    /**
-     * Shows a hint based on the current question type.
-     *
-     * @param theQuestion the current question
-     */
-    private void showHintForQuestion(final Question theQuestion) {
-        final String hintText;
-
-        if (theQuestion instanceof MultipleChoiceQuestion) {
-            hintText = buildMultipleChoiceHint((MultipleChoiceQuestion) theQuestion);
-        } else if (theQuestion instanceof TrueFalseQuestion) {
-            hintText = "Hint: answer True or False.";
-        } else {
-            hintText = buildShortAnswerHint(theQuestion.getCorrectAnswer());
-        }
-
-        myQuestionText.setText(myQuestionText.getText() + "\n\n" + hintText);
-        setFeedback("hint used.", TEXT_MID);
-    }
-
-    /**
-     * Builds a hint for a multiple choice question.
-     *
-     * @param theQuestion the multiple choice question
-     * @return the hint text
-     */
-    private String buildMultipleChoiceHint(final MultipleChoiceQuestion theQuestion) {
-        final StringBuilder hintText = new StringBuilder("Hint: choices are ");
-        final List<String> choices = theQuestion.getChoices();
-
-        if (choices.isEmpty()) {
-            hintText.append("not available");
-        } else {
-            appendChoices(hintText, choices);
-        }
-
-        hintText.append(".");
-
-        return hintText.toString();
-    }
-
-    /**
-     * Appends multiple choice options to a hint.
-     *
-     * @param theHintText the hint text builder
-     * @param theChoices the answer choices
-     */
-    private void appendChoices(final StringBuilder theHintText,
-                               final List<String> theChoices) {
-        for (int i = 0; i < theChoices.size(); i++) {
-            if (i > 0) {
-                theHintText.append(", ");
-            }
-
-            theHintText.append(theChoices.get(i));
-        }
-    }
-
-    /**
-     * Builds a hint for a short answer question.
-     *
-     * @param theAnswer the correct answer
-     * @return the hint text
-     */
-    private String buildShortAnswerHint(final String theAnswer) {
-        String hintText = "Hint: no hint is available for this answer.";
-
-        if (theAnswer != null && !theAnswer.isEmpty()) {
-            hintText = "Hint: starts with '" + theAnswer.charAt(FIRST_CHARACTER_INDEX)
-                    + "' and has " + theAnswer.length() + " characters.";
-        }
-
-        return hintText;
     }
 
     /**
@@ -1322,7 +1206,7 @@ public class MazeGUI extends JPanel {
             setFeedback("game is over. start a new game or exit.", RED_BORDER);
         } else if (!myGameStarted) {
             setFeedback("choose your character and press START first!", RED_BORDER);
-        } else if (myCurrentDoor == null) {
+        } else if (!myController.hasCurrentQuestion()) {
             setFeedback("press an arrow to pick a direction first.", TEXT_MID);
         } else if (myAnswerField.getText().trim().isEmpty()) {
             setFeedback("please type an answer first.", TEXT_MID);
@@ -1337,13 +1221,10 @@ public class MazeGUI extends JPanel {
      * @param theAnswer the submitted answer
      */
     private void checkSubmittedAnswer(final String theAnswer) {
-        final Question question = myCurrentDoor.getQuestion();
-        final Room current = myMaze.getCurrentRoom();
-
-        if (question.checkAnswer(theAnswer)) {
+        if (myController.checkAnswer(theAnswer)) {
             handleCorrectAnswer();
         } else {
-            handleWrongAnswer(current, question);
+            handleWrongAnswer();
         }
     }
 
@@ -1351,13 +1232,14 @@ public class MazeGUI extends JPanel {
      * Handles a correct answer.
      */
     private void handleCorrectAnswer() {
-        SoundManager.playCorrectAnswer();
+        final String direction = myController.getCurrentDirection();
 
-        myMaze.move(myCurrentDirection);
-        myCorrectCount++;
+        SoundManager.playCorrectAnswer();
+        myController.moveThroughCurrentDoor();
+        myCorrectCount = myController.getCorrectCount();
         myScoreLabel.setText("SCORE: "
                 + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER));
-        setFeedback("correct! moved " + myCurrentDirection + ".", GREEN_BUTTON);
+        setFeedback("correct! moved " + direction + ".", GREEN_BUTTON);
         myQuestionText.setText("Correct!\n\nPress an arrow to move to the next room.");
         clearCurrentQuestion();
         updateGrid();
@@ -1366,24 +1248,20 @@ public class MazeGUI extends JPanel {
 
     /**
      * Handles a wrong answer.
-     *
-     * @param theCurrentRoom the current room
-     * @param theQuestion the current question
      */
-    private void handleWrongAnswer(final Room theCurrentRoom,
-                                   final Question theQuestion) {
-        SoundManager.playWrongAnswer();
+    private void handleWrongAnswer() {
+        final String correctAnswer = myController.getCurrentCorrectAnswer();
 
-        theCurrentRoom.lockDoor(myCurrentDirection);
-        setFeedback("wrong! door locked. answer was: "
-                + theQuestion.getCorrectAnswer(), RED_BORDER);
+        SoundManager.playWrongAnswer();
+        myController.lockCurrentDoor();
+        setFeedback("wrong! door locked. answer was: " + correctAnswer, RED_BORDER);
         myQuestionText.setText("Wrong answer!\n\nThat door is now permanently locked.\n"
-                + "Correct answer: " + theQuestion.getCorrectAnswer()
+                + "Correct answer: " + correctAnswer
                 + "\n\nTry a different direction.");
         clearCurrentQuestion();
         updateGrid();
 
-        if (myMaze.isGameOver()) {
+        if (myController.isGameOver()) {
             SoundManager.playGameOver();
             endGame(false);
         }
@@ -1394,9 +1272,7 @@ public class MazeGUI extends JPanel {
      */
     private void clearCurrentQuestion() {
         myAnswerField.setText("");
-        myCurrentDoor = null;
-        myCurrentDirection = null;
-        myHintUsedForQuestion = false;
+        myController.clearCurrentQuestion();
     }
 
     /**
@@ -1415,7 +1291,7 @@ public class MazeGUI extends JPanel {
      * Checks the game state for victory.
      */
     private void checkGameState() {
-        if (myMaze.isGameWon()) {
+        if (myController.isGameWon()) {
             SoundManager.playWin();
             endGame(true);
         }
@@ -1428,14 +1304,14 @@ public class MazeGUI extends JPanel {
      */
     private void endGame(final boolean theWon) {
         myGameEnded = true;
-        myCurrentDoor = null;
-        myCurrentDirection = null;
         myAnswerField.setText("");
+        myController.clearCurrentQuestion();
 
         if (theWon) {
             setFeedback("victory! choose new game or exit.", GREEN_BUTTON);
             myQuestionText.setText("You reached the exit!\n\nFinal Score: "
-                    + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER));
+                    + String.format("%04d",
+                    myCorrectCount * POINTS_PER_CORRECT_ANSWER));
         } else {
             setFeedback("game over! choose new game or exit.", RED_BORDER);
             myQuestionText.setText("All paths are blocked.\n\nYour quest has failed.");
@@ -1455,10 +1331,12 @@ public class MazeGUI extends JPanel {
 
         if (theWon) {
             message = "You reached the exit!\nFinal Score: "
-                    + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER)
+                    + String.format("%04d",
+                    myCorrectCount * POINTS_PER_CORRECT_ANSWER)
                     + "\n\nWhat would you like to do?";
         } else {
-            message = "All paths are blocked. Your quest has failed!\n\nWhat would you like to do?";
+            message = "All paths are blocked. Your quest has failed!"
+                    + "\n\nWhat would you like to do?";
         }
 
         final Object[] options = {"New Game", "Exit"};
@@ -1496,18 +1374,16 @@ public class MazeGUI extends JPanel {
         newMaze.initializeDoors(factory);
 
         myMaze = newMaze;
+        myController.resetForNewMaze(newMaze);
+        myController.selectCharacter(mySelectedCharacter);
         myGameStarted = true;
         myGameEnded = false;
-        myCurrentDoor = null;
-        myCurrentDirection = null;
         myCorrectCount = 0;
-        myHintUsedForQuestion = false;
 
         myScoreLabel.setText("SCORE: 0000");
         myAnswerField.setText("");
         myQuestionText.setText("New game started!\n\nUse the arrow pad to move between rooms.");
         setFeedback("new quest begins!", TEXT_DARK);
-
         refreshCharacterBar();
         updateGrid();
     }
@@ -1611,11 +1487,10 @@ public class MazeGUI extends JPanel {
      * @param theFrame the parent frame
      */
     private void saveGame(final JFrame theFrame) {
-        final boolean saved = GameMemento.saveMaze(myMaze);
+        final boolean saved = myController.saveGame();
 
         if (saved) {
             SoundManager.playSaveGame();
-
             JOptionPane.showMessageDialog(
                     theFrame,
                     "Game saved successfully.",
@@ -1636,7 +1511,7 @@ public class MazeGUI extends JPanel {
      * @param theFrame the parent frame
      */
     private void loadGame(final JFrame theFrame) {
-        final Maze loadedMaze = GameMemento.loadMaze();
+        final Maze loadedMaze = myController.loadGame();
 
         if (loadedMaze == null) {
             JOptionPane.showMessageDialog(
@@ -1652,18 +1527,18 @@ public class MazeGUI extends JPanel {
                     JOptionPane.ERROR_MESSAGE);
         } else {
             myMaze = loadedMaze;
+            myController.loadMazeState(loadedMaze);
             SoundManager.playLoadGame();
-
-            myCurrentDoor = null;
-            myCurrentDirection = null;
-            myHintUsedForQuestion = false;
             myGameStarted = true;
             myGameEnded = false;
+            myCorrectCount = myController.getCorrectCount();
+            myScoreLabel.setText("SCORE: 0000");
 
             if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
                 mySelectedCharacter = 0;
             }
 
+            myController.selectCharacter(mySelectedCharacter);
             myQuestionText.setText("Saved game loaded.\n\nUse the arrow pad to continue.");
             myAnswerField.setText("");
             setFeedback("saved game loaded.", TEXT_DARK);
@@ -1678,6 +1553,1688 @@ public class MazeGUI extends JPanel {
         }
     }
 }
+
+
+// /*
+//  * Trivia Maze - TCSS 360
+//  * Spring 2026
+//  */
+
+// package view;
+
+// import java.awt.BorderLayout;
+// import java.awt.Color;
+// import java.awt.Cursor;
+// import java.awt.Dimension;
+// import java.awt.FlowLayout;
+// import java.awt.Font;
+// import java.awt.GridBagConstraints;
+// import java.awt.GridBagLayout;
+// import java.awt.GridLayout;
+// import java.awt.Image;
+// import java.awt.Insets;
+// import java.awt.event.MouseAdapter;
+// import java.awt.event.MouseEvent;
+// import java.util.List;
+
+// import javax.swing.AbstractAction;
+// import javax.swing.BorderFactory;
+// import javax.swing.ImageIcon;
+// import javax.swing.JButton;
+// import javax.swing.JComponent;
+// import javax.swing.KeyStroke;
+// import javax.swing.JFrame;
+// import javax.swing.JLabel;
+// import javax.swing.JMenu;
+// import javax.swing.JMenuBar;
+// import javax.swing.JMenuItem;
+// import javax.swing.JOptionPane;
+// import javax.swing.JPanel;
+// import javax.swing.JScrollPane;
+// import javax.swing.JTextArea;
+// import javax.swing.JTextField;
+// import javax.swing.KeyStroke;
+// import javax.swing.SwingConstants;
+// import javax.swing.SwingUtilities;
+// import javax.swing.border.Border;
+// import javax.swing.border.EmptyBorder;
+// import model.Database;
+// import model.Door;
+// import model.GameMemento;
+// import model.Maze;
+// import model.MultipleChoiceQuestion;
+// import model.Question;
+// import model.QuestionFactory;
+// import model.Room;
+// import model.TrueFalseQuestion;
+
+// /**
+//  * The main game panel for the Trivia Maze game.
+//  * This class displays the maze, character selection, question area,
+//  * answer input, score, menus, navigation controls, and hint support.
+//  *
+//  * @author Suhayr Hassan
+//  * @author Jinal Thummar
+//  * @author Roman Pavlyshyn
+//  * @version 24 May 2026
+//  */
+// public class MazeGUI extends JPanel {
+
+//     /**
+//      * Serial version UID for the Swing panel.
+//      */
+//     private static final long serialVersionUID = 1L;
+
+//     /**
+//      * No selected character value.
+//      */
+//     private static final int NO_SELECTED_CHARACTER = -1;
+
+//     /**
+//      * Number of selectable characters.
+//      */
+//     private static final int CHARACTER_COUNT = 3;
+
+//     /**
+//      * Default maze size.
+//      */
+//     private static final int MAZE_SIZE = 4;
+
+//     /**
+//      * Points awarded per correct answer.
+//      */
+//     private static final int POINTS_PER_CORRECT_ANSWER = 100;
+
+//     /**
+//      * Small icon size for character selection.
+//      */
+//     private static final int CHARACTER_ICON_SIZE = 80;
+
+//     /**
+//      * Character icon size used in the maze grid.
+//      */
+//     private static final int GRID_CHARACTER_ICON_SIZE = 48;
+
+//     /**
+//      * D-pad icon size.
+//      */
+//     private static final int DPAD_ICON_SIZE = 55;
+
+//     /**
+//      * D-pad button size.
+//      */
+//     private static final int DPAD_BUTTON_SIZE = 62;
+
+//     /**
+//      * Character card width.
+//      */
+//     private static final int CHARACTER_CARD_WIDTH = 110;
+
+//     /**
+//      * Character card height.
+//      */
+//     private static final int CHARACTER_CARD_HEIGHT = 110;
+
+//     /**
+//      * Main window width.
+//      */
+//     private static final int WINDOW_WIDTH = 980;
+
+//     /**
+//      * Main window height.
+//      */
+//     private static final int WINDOW_HEIGHT = 780;
+
+//     /**
+//      * First character position used for hints.
+//      */
+//     private static final int FIRST_CHARACTER_INDEX = 0;
+
+//     /**
+//      * Sky blue color.
+//      */
+//     private static final Color SKY_BLUE = new Color(91, 163, 217);
+
+//     /**
+//      * Light sky color.
+//      */
+//     private static final Color SKY_LIGHT = new Color(135, 206, 235);
+
+//     /**
+//      * Sand color.
+//      */
+//     private static final Color SAND = new Color(232, 208, 160);
+
+//     /**
+//      * Light sand color.
+//      */
+//     private static final Color SAND_LIGHT = new Color(250, 238, 200);
+
+//     /**
+//      * Dark sand color.
+//      */
+//     private static final Color SAND_DARK = new Color(212, 184, 112);
+
+//     /**
+//      * Gold color.
+//      */
+//     private static final Color GOLD = new Color(240, 216, 152);
+
+//     /**
+//      * Dark gold color.
+//      */
+//     private static final Color GOLD_DARK = new Color(200, 160, 80);
+
+//     /**
+//      * Gold border color.
+//      */
+//     private static final Color GOLD_BORDER = new Color(232, 160, 32);
+
+//     /**
+//      * Brown color.
+//      */
+//     private static final Color BROWN = new Color(90, 58, 26);
+
+//     /**
+//      * Red border color.
+//      */
+//     private static final Color RED_BORDER = new Color(170, 32, 32);
+
+//     /**
+//      * Exit cell color.
+//      */
+//     private static final Color BLUE_CELL = new Color(251, 243, 170, 255);
+
+//     /**
+//      * Exit border color.
+//      */
+//     private static final Color BLUE_BORDER = new Color(32, 96, 192);
+
+//     /**
+//      * Green button color.
+//      */
+//     private static final Color GREEN_BUTTON = new Color(74, 138, 32);
+
+//     /**
+//      * Dark green button color.
+//      */
+//     private static final Color GREEN_BUTTON_DARK = new Color(58, 106, 24);
+
+//     /**
+//      * Dark text color.
+//      */
+//     private static final Color TEXT_DARK = new Color(58, 42, 16);
+
+//     /**
+//      * Medium text color.
+//      */
+//     private static final Color TEXT_MID = new Color(138, 106, 48);
+
+//     /**
+//      * Small monospaced font.
+//      */
+//     private static final Font MONO_SMALL = new Font("Monospaced", Font.PLAIN, 10);
+
+//     /**
+//      * Medium monospaced font.
+//      */
+//     private static final Font MONO_MEDIUM = new Font("Monospaced", Font.PLAIN, 12);
+
+//     /**
+//      * Bold monospaced font.
+//      */
+//     private static final Font MONO_BOLD = new Font("Monospaced", Font.BOLD, 12);
+
+//     /**
+//      * Large monospaced font.
+//      */
+//     private static final Font MONO_LARGE = new Font("Monospaced", Font.BOLD, 22);
+
+//     /**
+//      * Extra large monospaced font.
+//      */
+//     private static final Font MONO_EXTRA_LARGE = new Font("Monospaced", Font.BOLD, 16);
+
+//     /**
+//      * Character names.
+//      */
+//     private static final String[] CHARACTER_NAMES = {"Warrior", "Mage", "Rogue"};
+
+//     /**
+//      * Character image paths.
+//      */
+//     private static final String[] CHARACTER_IMAGES = {
+//             "src/sprites/warrior.png",
+//             "src/sprites/mage.png",
+//             "src/sprites/rogue.png"
+//     };
+
+//     /**
+//      * Up button image path.
+//      */
+//     private static final String DPAD_UP_IMAGE = "src/sprites/up.png";
+
+//     /**
+//      * Down button image path.
+//      */
+//     private static final String DPAD_DOWN_IMAGE = "src/sprites/down.png";
+
+//     /**
+//      * Left button image path.
+//      */
+//     private static final String DPAD_LEFT_IMAGE = "src/sprites/left.png";
+
+//     /**
+//      * Right button image path.
+//      */
+//     private static final String DPAD_RIGHT_IMAGE = "src/sprites/right.png";
+
+//     /**
+//      * Maze model.
+//      */
+//     private Maze myMaze;
+
+//     /**
+//      * Maze size.
+//      */
+//     private final int mySize;
+
+//     /**
+//      * Currently selected character index.
+//      */
+//     private int mySelectedCharacter;
+
+//     /**
+//      * Whether the game has started.
+//      */
+//     private boolean myGameStarted;
+
+//     /** Whether the current game session has ended. */
+//     private boolean myGameEnded;
+
+//     /**
+//      * Current selected door.
+//      */
+//     private Door myCurrentDoor;
+
+//     /**
+//      * Current movement direction.
+//      */
+//     private String myCurrentDirection;
+
+//     /**
+//      * Correct answer count.
+//      */
+//     private int myCorrectCount;
+
+//     /**
+//      * Whether a hint has already been used for the current question.
+//      */
+//     private boolean myHintUsedForQuestion;
+
+//     /**
+//      * Grid cell panels.
+//      */
+//     private final JPanel[][] myGridCells;
+
+//     /**
+//      * Character selection cards.
+//      */
+//     private final JPanel[] myCharacterCards;
+
+//     /**
+//      * Character icons for selection.
+//      */
+//     private final ImageIcon[] myCharacterIcons;
+
+//     /**
+//      * Character icons for maze grid.
+//      */
+//     private final ImageIcon[] myCharacterGridIcons;
+
+//     /**
+//      * Question text area.
+//      */
+//     private final JTextArea myQuestionText;
+
+//     /**
+//      * Answer input field.
+//      */
+//     private final JTextField myAnswerField;
+
+//     /**
+//      * Submit button.
+//      */
+//     private final JButton mySubmitButton;
+
+//     /**
+//      * Hint button.
+//      */
+//     private final JButton myHintButton;
+
+//     /**
+//      * Feedback label.
+//      */
+//     private final JLabel myFeedbackLabel;
+
+//     /**
+//      * Score label.
+//      */
+//     private final JLabel myScoreLabel;
+
+//     /**
+//      * Constructs the maze GUI panel.
+//      *
+//      * @param theMaze the maze model
+//      */
+//     public MazeGUI(final Maze theMaze) {
+//         super(new BorderLayout());
+
+//         myMaze = theMaze;
+//         mySize = theMaze.getSize();
+//         mySelectedCharacter = NO_SELECTED_CHARACTER;
+//         myGameStarted = false;
+//         myGameEnded = false;
+//         myCurrentDoor = null;
+//         myCurrentDirection = null;
+//         myCorrectCount = 0;
+//         myHintUsedForQuestion = false;
+//         myGridCells = new JPanel[mySize][mySize];
+//         myCharacterCards = new JPanel[CHARACTER_COUNT];
+//         myCharacterIcons = new ImageIcon[CHARACTER_COUNT];
+//         myCharacterGridIcons = new ImageIcon[CHARACTER_COUNT];
+
+//         setBackground(SKY_BLUE);
+//         setBorder(new EmptyBorder(10, 10, 10, 10));
+
+//         loadCharacterIcons();
+
+//         myQuestionText = buildQuestionArea();
+//         myAnswerField = buildAnswerField();
+//         mySubmitButton = buildSubmitButton();
+//         myHintButton = buildHintButton();
+
+//         myFeedbackLabel = new JLabel("> pick a character and press start");
+//         myFeedbackLabel.setFont(MONO_SMALL);
+//         myFeedbackLabel.setForeground(TEXT_MID);
+
+//         myScoreLabel = new JLabel("SCORE: 0000");
+//         myScoreLabel.setFont(MONO_BOLD);
+//         myScoreLabel.setForeground(BROWN);
+//         myScoreLabel.setBackground(GOLD);
+//         myScoreLabel.setOpaque(true);
+//         myScoreLabel.setBorder(BorderFactory.createCompoundBorder(
+//                 BorderFactory.createLineBorder(GOLD_DARK, 3),
+//                 new EmptyBorder(2, 8, 2, 8)));
+
+//         add(buildMainPanel(), BorderLayout.CENTER);
+//         add(buildCharacterBar(), BorderLayout.SOUTH);
+
+//         updateGrid();
+//         setupKeyboardShortcuts();
+//     }
+
+//     /**
+//      * Creates and displays the main game window.
+//      */
+//     public static void createAndShowGUI() {
+//         Database.init();
+
+//         final QuestionFactory factory = new QuestionFactory("trivia.db");
+//         final Maze maze = new Maze(MAZE_SIZE);
+//         maze.initializeDoors(factory);
+
+//         final JFrame frame = new JFrame("Trivia Maze");
+//         final MazeGUI gamePanel = new MazeGUI(maze);
+
+//         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//         frame.setPreferredSize(new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT));
+//         frame.setBackground(SKY_BLUE);
+//         frame.setJMenuBar(buildMenuBar(frame, gamePanel));
+//         frame.add(gamePanel, BorderLayout.CENTER);
+//         frame.pack();
+//         frame.setLocationRelativeTo(null);
+//         frame.setVisible(true);
+//     }
+
+//     /**
+//      * Builds the menu bar.
+//      *
+//      * @param theFrame the parent frame
+//      * @param theGamePanel the game panel
+//      * @return the menu bar
+//      */
+//     private static JMenuBar buildMenuBar(final JFrame theFrame,
+//                                          final MazeGUI theGamePanel) {
+//         final JMenuBar bar = new JMenuBar();
+//         final JMenu fileMenu = styledMenu("File");
+//         final JMenu helpMenu = styledMenu("Help");
+//         final JMenuItem saveItem = styledItem("Save Game");
+//         final JMenuItem loadItem = styledItem("Load Game");
+//         final JMenuItem exitItem = styledItem("Exit");
+//         final JMenuItem aboutItem = styledItem("About");
+//         final JMenuItem howItem = styledItem("Game Play Instructions");
+
+//         bar.setBackground(GOLD);
+//         bar.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, GOLD_DARK));
+
+//         saveItem.addActionListener(theEvent -> theGamePanel.saveGame(theFrame));
+//         loadItem.addActionListener(theEvent -> theGamePanel.loadGame(theFrame));
+//         exitItem.addActionListener(theEvent -> exitGame(theFrame));
+
+//         aboutItem.addActionListener(theEvent -> JOptionPane.showMessageDialog(theFrame,
+//                 "Trivia Maze v1.0\nTCSS 360 - Spring 2026\n\n"
+//                         + "Suhayr Hassan\nJinal Thummar\nRoman Pavlyshyn",
+//                 "About",
+//                 JOptionPane.INFORMATION_MESSAGE));
+
+//         howItem.addActionListener(theEvent -> JOptionPane.showMessageDialog(theFrame,
+//                 "1. Choose your character at the bottom.\n"
+//                         + "2. Press START GAME.\n"
+//                         + "3. Use the arrow pad to move between rooms.\n"
+//                         + "4. Answer trivia questions to unlock doors.\n"
+//                         + "5. Use HINT for help during a question.\n"
+//                         + "6. Wrong answer = door locked permanently.\n"
+//                         + "7. Reach the exit (*) to win.\n"
+//                         + "8. If all paths are blocked, game over.",
+//                 "How to Play",
+//                 JOptionPane.INFORMATION_MESSAGE));
+
+//         fileMenu.add(saveItem);
+//         fileMenu.add(loadItem);
+//         fileMenu.addSeparator();
+//         fileMenu.add(exitItem);
+
+//         helpMenu.add(aboutItem);
+//         helpMenu.add(howItem);
+
+//         bar.add(fileMenu);
+//         bar.add(helpMenu);
+
+//         return bar;
+//     }
+
+//     /**
+//      * Builds a styled menu.
+//      *
+//      * @param theText the menu text
+//      * @return the styled menu
+//      */
+//     private static JMenu styledMenu(final String theText) {
+//         final JMenu menu = new JMenu(theText);
+//         menu.setFont(MONO_BOLD);
+//         menu.setForeground(BROWN);
+//         return menu;
+//     }
+
+//     /**
+//      * Builds a styled menu item.
+//      *
+//      * @param theText the menu item text
+//      * @return the styled menu item
+//      */
+//     private static JMenuItem styledItem(final String theText) {
+//         final JMenuItem item = new JMenuItem(theText);
+//         item.setFont(MONO_MEDIUM);
+//         item.setBackground(GOLD);
+//         item.setForeground(TEXT_DARK);
+//         return item;
+//     }
+
+//     /**
+//      * Exits the game after confirmation.
+//      *
+//      * @param theFrame the parent frame
+//      */
+//     private static void exitGame(final JFrame theFrame) {
+//         final int choice = JOptionPane.showConfirmDialog(theFrame,
+//                 "Exit without saving?",
+//                 "Exit",
+//                 JOptionPane.YES_NO_OPTION);
+
+//         if (choice == JOptionPane.YES_OPTION) {
+//             theFrame.dispose();
+//         }
+//     }
+
+//     /**
+//      * Entry point to launch the Trivia Maze GUI.
+//      *
+//      * @param theArgs command-line arguments
+//      */
+//     public static void main(final String[] theArgs) {
+//         SwingUtilities.invokeLater(MazeGUI::createAndShowGUI);
+//     }
+
+//     /**
+//      * Loads and scales character images.
+//      */
+//     private void loadCharacterIcons() {
+//         for (int i = 0; i < CHARACTER_COUNT; i++) {
+//             final ImageIcon rawIcon = new ImageIcon(CHARACTER_IMAGES[i]);
+
+//             myCharacterIcons[i] = new ImageIcon(rawIcon.getImage().getScaledInstance(
+//                     CHARACTER_ICON_SIZE,
+//                     CHARACTER_ICON_SIZE,
+//                     Image.SCALE_FAST));
+
+//             myCharacterGridIcons[i] = new ImageIcon(rawIcon.getImage().getScaledInstance(
+//                     GRID_CHARACTER_ICON_SIZE,
+//                     GRID_CHARACTER_ICON_SIZE,
+//                     Image.SCALE_FAST));
+//         }
+//     }
+
+//     /**
+//      * Builds the main panel.
+//      *
+//      * @return the main panel
+//      */
+//     private JPanel buildMainPanel() {
+//         final JPanel panel = new JPanel(new GridBagLayout());
+//         final GridBagConstraints constraints = new GridBagConstraints();
+
+//         panel.setBackground(SKY_BLUE);
+
+//         constraints.fill = GridBagConstraints.BOTH;
+//         constraints.insets = new Insets(4, 4, 4, 4);
+
+//         constraints.gridx = 0;
+//         constraints.gridy = 0;
+//         constraints.gridheight = 2;
+//         constraints.weightx = 0.65;
+//         constraints.weighty = 1.0;
+//         panel.add(buildMapPanel(), constraints);
+
+//         constraints.gridx = 1;
+//         constraints.gridheight = 1;
+//         constraints.weightx = 0.35;
+
+//         constraints.gridy = 0;
+//         constraints.weighty = 0.65;
+//         panel.add(buildQuestionPanel(), constraints);
+
+//         constraints.gridy = 1;
+//         constraints.weighty = 0.35;
+//         panel.add(buildDpadPanel(), constraints);
+
+//         return panel;
+//     }
+
+//     /**
+//      * Builds the map panel.
+//      *
+//      * @return the map panel
+//      */
+//     private JPanel buildMapPanel() {
+//         final JPanel wrap = new JPanel(new BorderLayout(0, 8));
+//         final JPanel header = new JPanel(new BorderLayout());
+//         final JLabel title = new JLabel("TRIVIA MAZE");
+//         final JPanel grid = new JPanel(new GridLayout(mySize, mySize, 4, 4));
+
+//         wrap.setBackground(SKY_LIGHT);
+//         wrap.setBorder(BorderFactory.createCompoundBorder(
+//                 BorderFactory.createLineBorder(SAND_DARK, 3),
+//                 new EmptyBorder(10, 10, 10, 10)));
+
+//         header.setBackground(SKY_LIGHT);
+
+//         title.setFont(MONO_EXTRA_LARGE);
+//         title.setForeground(BROWN);
+
+//         header.add(title, BorderLayout.WEST);
+//         header.add(myScoreLabel, BorderLayout.EAST);
+//         wrap.add(header, BorderLayout.NORTH);
+
+//         grid.setBackground(SKY_LIGHT);
+
+//         for (int row = 0; row < mySize; row++) {
+//             for (int col = 0; col < mySize; col++) {
+//                 final JPanel cell = new JPanel(new GridBagLayout());
+
+//                 cell.setBackground(SAND);
+//                 cell.setBorder(BorderFactory.createLineBorder(SAND_DARK, 3));
+//                 myGridCells[row][col] = cell;
+//                 grid.add(cell);
+//             }
+//         }
+
+//         wrap.add(grid, BorderLayout.CENTER);
+
+//         return wrap;
+//     }
+
+//     /**
+//      * Builds the question panel.
+//      *
+//      * @return the question panel
+//      */
+//     private JPanel buildQuestionPanel() {
+//         final JPanel panel = new JPanel(new GridBagLayout());
+//         final GridBagConstraints constraints = new GridBagConstraints();
+//         final JLabel questionTag = new JLabel("QUESTION");
+//         final JScrollPane scroll = new JScrollPane(myQuestionText);
+//         final JLabel answerTag = new JLabel("YOUR ANSWER");
+
+//         panel.setBackground(GOLD);
+//         panel.setBorder(BorderFactory.createCompoundBorder(
+//                 BorderFactory.createLineBorder(GOLD_DARK, 3),
+//                 new EmptyBorder(10, 12, 10, 12)));
+
+//         constraints.fill = GridBagConstraints.HORIZONTAL;
+//         constraints.weightx = 1.0;
+//         constraints.anchor = GridBagConstraints.NORTHWEST;
+//         constraints.insets = new Insets(4, 0, 4, 0);
+
+//         constraints.gridy = 0;
+//         questionTag.setFont(MONO_BOLD);
+//         questionTag.setForeground(TEXT_MID);
+//         panel.add(questionTag, constraints);
+
+//         constraints.gridy = 1;
+//         constraints.weighty = 1.0;
+//         constraints.fill = GridBagConstraints.BOTH;
+//         scroll.setBorder(BorderFactory.createLineBorder(SAND_DARK, 2));
+//         scroll.getViewport().setBackground(SAND_LIGHT);
+//         panel.add(scroll, constraints);
+
+//         constraints.gridy = 2;
+//         constraints.weighty = 0;
+//         constraints.fill = GridBagConstraints.HORIZONTAL;
+//         answerTag.setFont(MONO_BOLD);
+//         answerTag.setForeground(TEXT_MID);
+//         panel.add(answerTag, constraints);
+
+//         constraints.gridy = 3;
+//         panel.add(myAnswerField, constraints);
+
+//         constraints.gridy = 4;
+//         panel.add(buildAnswerButtonPanel(), constraints);
+
+//         constraints.gridy = 5;
+//         panel.add(myFeedbackLabel, constraints);
+
+//         return panel;
+//     }
+
+//     /**
+//      * Builds the question text area.
+//      *
+//      * @return the question text area
+//      */
+//     private JTextArea buildQuestionArea() {
+//         final JTextArea textArea = new JTextArea(5, 20);
+
+//         textArea.setFont(MONO_MEDIUM);
+//         textArea.setForeground(TEXT_DARK);
+//         textArea.setBackground(SAND_LIGHT);
+//         textArea.setEditable(false);
+//         textArea.setLineWrap(true);
+//         textArea.setWrapStyleWord(true);
+//         textArea.setBorder(new EmptyBorder(6, 8, 6, 8));
+//         textArea.setText("Choose your character below, then press START to begin!");
+
+//         return textArea;
+//     }
+
+//     /**
+//      * Builds the answer field.
+//      *
+//      * @return the answer field
+//      */
+//     private JTextField buildAnswerField() {
+//         final JTextField textField = new JTextField();
+
+//         textField.setFont(MONO_MEDIUM);
+//         textField.setForeground(TEXT_DARK);
+//         textField.setBackground(SAND_LIGHT);
+//         textField.setCaretColor(BROWN);
+//         textField.setBorder(BorderFactory.createCompoundBorder(
+//                 BorderFactory.createLineBorder(GOLD_BORDER, 3),
+//                 new EmptyBorder(5, 8, 5, 8)));
+//         textField.addActionListener(theEvent -> submitAnswer());
+
+//         return textField;
+//     }
+
+//     /**
+//      * Builds the submit button.
+//      *
+//      * @return the submit button
+//      */
+//     private JButton buildSubmitButton() {
+//         final JButton button = new JButton("[ SUBMIT ]");
+
+//         button.setFont(MONO_BOLD);
+//         button.setForeground(new Color(240, 248, 224));
+//         button.setBackground(GREEN_BUTTON);
+//         button.setOpaque(true);
+//         button.setBorderPainted(true);
+//         button.setBorder(BorderFactory.createLineBorder(GREEN_BUTTON_DARK, 3));
+//         button.setFocusPainted(false);
+//         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+//         button.addActionListener(theEvent -> submitAnswer());
+
+//         return button;
+//     }
+
+//     /**
+//      * Builds the hint button.
+//      *
+//      * @return the hint button
+//      */
+//     private JButton buildHintButton() {
+//         final JButton button = new JButton("[ HINT ]");
+
+//         button.setFont(MONO_BOLD);
+//         button.setForeground(new Color(240, 248, 224));
+//         button.setBackground(GOLD_BORDER);
+//         button.setOpaque(true);
+//         button.setBorderPainted(true);
+//         button.setBorder(BorderFactory.createLineBorder(GOLD_DARK, 3));
+//         button.setFocusPainted(false);
+//         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+//         button.addActionListener(theEvent -> showHint());
+
+//         return button;
+//     }
+
+//     /**
+//      * Builds the panel containing the submit and hint buttons.
+//      *
+//      * @return the answer button panel
+//      */
+//     private JPanel buildAnswerButtonPanel() {
+//         final JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 6, 0));
+
+//         buttonPanel.setBackground(GOLD);
+//         buttonPanel.add(mySubmitButton);
+//         buttonPanel.add(myHintButton);
+
+//         return buttonPanel;
+//     }
+
+//     /**
+//      * Builds the d-pad panel.
+//      *
+//      * @return the d-pad panel
+//      */
+//     private JPanel buildDpadPanel() {
+//         final JPanel wrap = new JPanel(new GridBagLayout());
+//         final GridBagConstraints constraints = new GridBagConstraints();
+//         final JPanel nub = new JPanel();
+
+//         wrap.setBackground(GOLD);
+//         wrap.setBorder(BorderFactory.createLineBorder(GOLD_DARK, 3));
+
+//         constraints.insets = new Insets(4, 4, 4, 4);
+
+//         constraints.gridx = 1;
+//         constraints.gridy = 0;
+//         wrap.add(buildDpadButton(DPAD_UP_IMAGE, "north"), constraints);
+
+//         constraints.gridx = 0;
+//         constraints.gridy = 1;
+//         wrap.add(buildDpadButton(DPAD_LEFT_IMAGE, "west"), constraints);
+
+//         constraints.gridx = 2;
+//         constraints.gridy = 1;
+//         wrap.add(buildDpadButton(DPAD_RIGHT_IMAGE, "east"), constraints);
+
+//         constraints.gridx = 1;
+//         constraints.gridy = 2;
+//         wrap.add(buildDpadButton(DPAD_DOWN_IMAGE, "south"), constraints);
+
+//         nub.setBackground(SAND_DARK);
+//         nub.setPreferredSize(new Dimension(DPAD_BUTTON_SIZE, DPAD_BUTTON_SIZE));
+//         nub.setBorder(BorderFactory.createLineBorder(GOLD_DARK, 2));
+
+//         constraints.gridx = 1;
+//         constraints.gridy = 1;
+//         wrap.add(nub, constraints);
+
+//         return wrap;
+//     }
+
+//     /**
+//      * Builds a d-pad button.
+//      *
+//      * @param theImagePath the button image path
+//      * @param theDirection the movement direction
+//      * @return the d-pad button
+//      */
+//     private JButton buildDpadButton(final String theImagePath,
+//                                     final String theDirection) {
+//         final ImageIcon icon = new ImageIcon(
+//                 new ImageIcon(theImagePath).getImage().getScaledInstance(
+//                         DPAD_ICON_SIZE,
+//                         DPAD_ICON_SIZE,
+//                         Image.SCALE_FAST));
+//         final JButton button = new JButton(icon);
+
+//         button.setBackground(SAND);
+//         button.setOpaque(true);
+//         button.setContentAreaFilled(true);
+//         button.setBorder(BorderFactory.createLineBorder(GOLD_DARK, 2));
+//         button.setFocusPainted(false);
+//         button.setPreferredSize(new Dimension(DPAD_BUTTON_SIZE, DPAD_BUTTON_SIZE));
+//         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+//         button.addActionListener(theEvent -> handleMove(theDirection));
+
+//         button.addMouseListener(new MouseAdapter() {
+
+//             /**
+//              * Changes the button color when the mouse enters.
+//              *
+//              * @param theEvent the mouse event
+//              */
+//             @Override
+//             public void mouseEntered(final MouseEvent theEvent) {
+//                 button.setBackground(SAND_LIGHT);
+//             }
+
+//             /**
+//              * Changes the button color when the mouse exits.
+//              *
+//              * @param theEvent the mouse event
+//              */
+//             @Override
+//             public void mouseExited(final MouseEvent theEvent) {
+//                 button.setBackground(SAND);
+//             }
+//         });
+
+//         return button;
+//     }
+
+//     /**
+//      * Adds keyboard shortcuts for movement and answer submission.
+//      */
+//     private void setupKeyboardShortcuts() {
+//         final JComponent root = this;
+
+//         addKeyboardShortcut(root, "UP", "moveNorth", () -> handleMove("north"));
+//         addKeyboardShortcut(root, "W", "moveNorthW", () -> handleMove("north"));
+
+//         addKeyboardShortcut(root, "DOWN", "moveSouth", () -> handleMove("south"));
+//         addKeyboardShortcut(root, "S", "moveSouthS", () -> handleMove("south"));
+
+//         addKeyboardShortcut(root, "LEFT", "moveWest", () -> handleMove("west"));
+//         addKeyboardShortcut(root, "A", "moveWestA", () -> handleMove("west"));
+
+//         addKeyboardShortcut(root, "RIGHT", "moveEast", () -> handleMove("east"));
+//         addKeyboardShortcut(root, "D", "moveEastD", () -> handleMove("east"));
+
+//         addKeyboardShortcut(root, "ENTER", "submitAnswer", this::submitAnswer);
+//     }
+
+//     /**
+//      * Adds one keyboard shortcut to the game panel.
+//      *
+//      * @param theComponent the component receiving the shortcut
+//      * @param theKeyStroke the key pressed by the player
+//      * @param theActionName the action name
+//      * @param theAction the action to run
+//      */
+//     private void addKeyboardShortcut(final JComponent theComponent,
+//                                     final String theKeyStroke,
+//                                     final String theActionName,
+//                                     final Runnable theAction) {
+//         theComponent.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+//                 .put(KeyStroke.getKeyStroke(theKeyStroke), theActionName);
+
+//         theComponent.getActionMap().put(theActionName, new AbstractAction() {
+//             @Override
+//             public void actionPerformed(final java.awt.event.ActionEvent theEvent) {
+//                 theAction.run();
+//             }
+//         });
+//     }
+
+//     /**
+//      * Builds the character selection bar.
+//      *
+//      * @return the character selection bar
+//      */
+//     private JPanel buildCharacterBar() {
+//         final JPanel bar = new JPanel(new BorderLayout(0, 6));
+//         final JLabel title = new JLabel("CHOOSE YOUR CHARACTER");
+//         final JPanel cards = new JPanel(new GridLayout(1, CHARACTER_COUNT, 12, 0));
+//         final JButton startButton = buildStartButton();
+//         final JPanel buttonWrap = new JPanel(new FlowLayout(FlowLayout.CENTER));
+
+//         bar.setBackground(GOLD);
+//         bar.setBorder(BorderFactory.createCompoundBorder(
+//                 BorderFactory.createLineBorder(GOLD_BORDER, 3),
+//                 new EmptyBorder(10, 12, 10, 12)));
+
+//         title.setFont(MONO_BOLD);
+//         title.setForeground(BROWN);
+//         title.setHorizontalAlignment(SwingConstants.CENTER);
+//         bar.add(title, BorderLayout.NORTH);
+
+//         cards.setBackground(GOLD);
+
+//         for (int i = 0; i < CHARACTER_COUNT; i++) {
+//             cards.add(buildCharacterCard(i));
+//         }
+
+//         bar.add(cards, BorderLayout.CENTER);
+
+//         buttonWrap.setBackground(GOLD);
+//         buttonWrap.add(startButton);
+//         bar.add(buttonWrap, BorderLayout.SOUTH);
+
+//         return bar;
+//     }
+
+//     /**
+//      * Builds the start button.
+//      *
+//      * @return the start button
+//      */
+//     private JButton buildStartButton() {
+//         final String buttonText = myGameStarted ? "[ RESTART ]" : "[ START GAME ]";
+//         final JButton startButton = new JButton(buttonText);
+
+//         startButton.setFont(MONO_BOLD);
+//         startButton.setForeground(Color.WHITE);
+//         startButton.setBackground(GREEN_BUTTON);
+//         startButton.setOpaque(true);
+//         startButton.setBorder(BorderFactory.createLineBorder(GREEN_BUTTON_DARK, 3));
+//         startButton.setFocusPainted(false);
+//         startButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+//         startButton.addActionListener(theEvent -> startGame());
+
+//         return startButton;
+//     }
+
+//     /**
+//      * Builds a character card.
+//      *
+//      * @param theIndex the character index
+//      * @return the character card
+//      */
+//     private JPanel buildCharacterCard(final int theIndex) {
+//         final JPanel card = new JPanel(new GridBagLayout());
+//         final JLabel sprite = new JLabel(myCharacterIcons[theIndex]);
+//         final int index = theIndex;
+//         final MouseAdapter characterMouseListener = buildCharacterMouseListener(card, index);
+
+//         card.setBackground(theIndex == mySelectedCharacter ? SAND_LIGHT : SAND);
+//         card.setBorder(getCharacterCardBorder(theIndex));
+//         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+//         card.setPreferredSize(new Dimension(CHARACTER_CARD_WIDTH, CHARACTER_CARD_HEIGHT));
+
+//         sprite.setHorizontalAlignment(SwingConstants.CENTER);
+//         sprite.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+//         card.add(sprite);
+//         card.addMouseListener(characterMouseListener);
+//         sprite.addMouseListener(characterMouseListener);
+
+//         myCharacterCards[theIndex] = card;
+
+//         return card;
+//     }
+
+//     /**
+//      * Builds a mouse listener for a character card.
+//      *
+//      * @param theCard the character card
+//      * @param theIndex the character index
+//      * @return the mouse listener
+//      */
+//     private MouseAdapter buildCharacterMouseListener(final JPanel theCard,
+//                                                     final int theIndex) {
+//         return new MouseAdapter() {
+
+//             /**
+//              * Selects the clicked character.
+//              *
+//              * @param theEvent the mouse event
+//              */
+//             @Override
+//             public void mouseClicked(final MouseEvent theEvent) {
+//                 selectCharacter(theIndex);
+//             }
+
+//             /**
+//              * Highlights the character card.
+//              *
+//              * @param theEvent the mouse event
+//              */
+//             @Override
+//             public void mouseEntered(final MouseEvent theEvent) {
+//                 theCard.setBorder(BorderFactory.createCompoundBorder(
+//                         BorderFactory.createLineBorder(GOLD_DARK, 3),
+//                         new EmptyBorder(8, 8, 8, 8)));
+//             }
+
+//             /**
+//              * Restores the character card border.
+//              *
+//              * @param theEvent the mouse event
+//              */
+//             @Override
+//             public void mouseExited(final MouseEvent theEvent) {
+//                 theCard.setBorder(getCharacterCardBorder(theIndex));
+//             }
+//         };
+//     }
+
+//     /**
+//      * Gets the border for a character card.
+//      *
+//      * @param theIndex the character index
+//      * @return the border
+//      */
+//     private Border getCharacterCardBorder(final int theIndex) {
+//         return BorderFactory.createCompoundBorder(
+//                 BorderFactory.createLineBorder(
+//                         theIndex == mySelectedCharacter ? GOLD_BORDER : SAND_DARK, 3),
+//                 new EmptyBorder(8, 8, 8, 8));
+//     }
+
+//     /**
+//      * Selects a character.
+//      *
+//      * @param theIndex the selected character index
+//      */
+//     private void selectCharacter(final int theIndex) {
+//         mySelectedCharacter = theIndex;
+//         refreshCharacterBar();
+//         updateGrid();
+//         setFeedback("selected " + CHARACTER_NAMES[mySelectedCharacter] + ".", TEXT_DARK);
+//         myQuestionText.setText("You selected " + CHARACTER_NAMES[mySelectedCharacter]
+//                 + ".\n\nPress START GAME to begin.");
+//     }
+
+//     /**
+//      * Refreshes the character bar.
+//      */
+//     private void refreshCharacterBar() {
+//         final JPanel bar = (JPanel) getComponent(1);
+
+//         bar.removeAll();
+//         bar.add(buildCharacterBarContentTitle(), BorderLayout.NORTH);
+//         bar.add(buildCharacterCardPanel(), BorderLayout.CENTER);
+//         bar.add(buildStartButtonPanel(), BorderLayout.SOUTH);
+//         bar.revalidate();
+//         bar.repaint();
+//     }
+
+//     /**
+//      * Builds the character bar title.
+//      *
+//      * @return the title label
+//      */
+//     private JLabel buildCharacterBarContentTitle() {
+//         final JLabel title = new JLabel("CHOOSE YOUR CHARACTER");
+
+//         title.setFont(MONO_BOLD);
+//         title.setForeground(BROWN);
+//         title.setHorizontalAlignment(SwingConstants.CENTER);
+
+//         return title;
+//     }
+
+//     /**
+//      * Builds the character card panel.
+//      *
+//      * @return the character card panel
+//      */
+//     private JPanel buildCharacterCardPanel() {
+//         final JPanel cards = new JPanel(new GridLayout(1, CHARACTER_COUNT, 12, 0));
+
+//         cards.setBackground(GOLD);
+
+//         for (int i = 0; i < CHARACTER_COUNT; i++) {
+//             cards.add(buildCharacterCard(i));
+//         }
+
+//         return cards;
+//     }
+
+//     /**
+//      * Builds the start button panel.
+//      *
+//      * @return the start button panel
+//      */
+//     private JPanel buildStartButtonPanel() {
+//         final JPanel buttonWrap = new JPanel(new FlowLayout(FlowLayout.CENTER));
+
+//         buttonWrap.setBackground(GOLD);
+//         buttonWrap.add(buildStartButton());
+
+//         return buttonWrap;
+//     }
+
+//     /**
+//      * Starts the game.
+//      */
+//     private void startGame() {
+//         if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
+//             myQuestionText.setText("Please choose a character before starting the game.");
+//             setFeedback("choose a character first.", RED_BORDER);
+//         } else if (myGameEnded) {
+//             resetGame();
+//         } else {
+//             myGameStarted = true;
+//             myGameEnded = false;
+//             myQuestionText.setText("You chose " + CHARACTER_NAMES[mySelectedCharacter]
+//                     + "!\n\nUse the arrow pad to move between rooms.\n"
+//                     + "Answer trivia questions correctly to unlock doors.");
+//             setFeedback("quest begins! press an arrow to move.", TEXT_DARK);
+//             refreshCharacterBar();
+//             updateGrid();
+//         }
+//     }
+    
+//     /**
+//      * Handles a movement attempt.
+//      *
+//      * @param theDirection the movement direction
+//      */
+//     private void handleMove(final String theDirection) {
+//         if (myGameEnded) {
+//             setFeedback("game is over. start a new game or exit.", RED_BORDER);
+//         } else if (!myGameStarted) {
+//             setFeedback("choose your character and press START first!", RED_BORDER);
+//         } else {
+//             handleStartedMove(theDirection);
+//         }
+//     }
+
+//     /**
+//      * Handles a movement attempt after the game has started.
+//      *
+//      * @param theDirection the movement direction
+//      */
+//     private void handleStartedMove(final String theDirection) {
+//         final Room current = myMaze.getCurrentRoom();
+
+//         if (!current.hasDoor(theDirection)) {
+//             setFeedback("no path to the " + theDirection + ".", TEXT_MID);
+//         } else if (current.isDoorLocked(theDirection)) {
+//             setFeedback("that door is permanently locked!", RED_BORDER);
+//         } else {
+//             myCurrentDoor = current.getDoor(theDirection);
+//             myCurrentDirection = theDirection;
+//             showCurrentQuestion();
+//         }
+//     }
+
+//     /**
+//      * Shows the current door question.
+//      */
+//     private void showCurrentQuestion() {
+//         final Question question = myCurrentDoor.getQuestion();
+
+//         myHintUsedForQuestion = false;
+//         myQuestionText.setText(question.getQuestionText());
+//         myAnswerField.setText("");
+//         myAnswerField.requestFocus();
+//         setFeedback("type your answer and press submit.", TEXT_MID);
+//     }
+
+//     /**
+//      * Shows a hint for the current question.
+//      */
+//     private void showHint() {
+//         if (myGameEnded) {
+//             setFeedback("game is over. start a new game or exit.", RED_BORDER);
+//         } else if (!myGameStarted) {
+//             setFeedback("choose your character and press START first!", RED_BORDER);
+//         } else if (myCurrentDoor == null) {
+//             setFeedback("press an arrow to pick a question first.", TEXT_MID);
+//         } else if (myHintUsedForQuestion) {
+//             setFeedback("hint already used for this question.", TEXT_MID);
+//         } else {
+//             myHintUsedForQuestion = true;
+//             showHintForQuestion(myCurrentDoor.getQuestion());
+//         }
+//     }
+
+//     /**
+//      * Shows a hint based on the current question type.
+//      *
+//      * @param theQuestion the current question
+//      */
+//     private void showHintForQuestion(final Question theQuestion) {
+//         final String hintText;
+
+//         if (theQuestion instanceof MultipleChoiceQuestion) {
+//             hintText = buildMultipleChoiceHint((MultipleChoiceQuestion) theQuestion);
+//         } else if (theQuestion instanceof TrueFalseQuestion) {
+//             hintText = "Hint: answer True or False.";
+//         } else {
+//             hintText = buildShortAnswerHint(theQuestion.getCorrectAnswer());
+//         }
+
+//         myQuestionText.setText(myQuestionText.getText() + "\n\n" + hintText);
+//         setFeedback("hint used.", TEXT_MID);
+//     }
+
+//     /**
+//      * Builds a hint for a multiple choice question.
+//      *
+//      * @param theQuestion the multiple choice question
+//      * @return the hint text
+//      */
+//     private String buildMultipleChoiceHint(final MultipleChoiceQuestion theQuestion) {
+//         final StringBuilder hintText = new StringBuilder("Hint: choices are ");
+//         final List<String> choices = theQuestion.getChoices();
+
+//         if (choices.isEmpty()) {
+//             hintText.append("not available");
+//         } else {
+//             appendChoices(hintText, choices);
+//         }
+
+//         hintText.append(".");
+
+//         return hintText.toString();
+//     }
+
+//     /**
+//      * Appends multiple choice options to a hint.
+//      *
+//      * @param theHintText the hint text builder
+//      * @param theChoices the answer choices
+//      */
+//     private void appendChoices(final StringBuilder theHintText,
+//                                final List<String> theChoices) {
+//         for (int i = 0; i < theChoices.size(); i++) {
+//             if (i > 0) {
+//                 theHintText.append(", ");
+//             }
+
+//             theHintText.append(theChoices.get(i));
+//         }
+//     }
+
+//     /**
+//      * Builds a hint for a short answer question.
+//      *
+//      * @param theAnswer the correct answer
+//      * @return the hint text
+//      */
+//     private String buildShortAnswerHint(final String theAnswer) {
+//         String hintText = "Hint: no hint is available for this answer.";
+
+//         if (theAnswer != null && !theAnswer.isEmpty()) {
+//             hintText = "Hint: starts with '" + theAnswer.charAt(FIRST_CHARACTER_INDEX)
+//                     + "' and has " + theAnswer.length() + " characters.";
+//         }
+
+//         return hintText;
+//     }
+
+//     /**
+//      * Submits the typed answer.
+//      */
+//     private void submitAnswer() {
+//         if (myGameEnded) {
+//             setFeedback("game is over. start a new game or exit.", RED_BORDER);
+//         } else if (!myGameStarted) {
+//             setFeedback("choose your character and press START first!", RED_BORDER);
+//         } else if (myCurrentDoor == null) {
+//             setFeedback("press an arrow to pick a direction first.", TEXT_MID);
+//         } else if (myAnswerField.getText().trim().isEmpty()) {
+//             setFeedback("please type an answer first.", TEXT_MID);
+//         } else {
+//             checkSubmittedAnswer(myAnswerField.getText().trim());
+//         }
+//     }
+
+//     /**
+//      * Checks the submitted answer.
+//      *
+//      * @param theAnswer the submitted answer
+//      */
+//     private void checkSubmittedAnswer(final String theAnswer) {
+//         final Question question = myCurrentDoor.getQuestion();
+//         final Room current = myMaze.getCurrentRoom();
+
+//         if (question.checkAnswer(theAnswer)) {
+//             handleCorrectAnswer();
+//         } else {
+//             handleWrongAnswer(current, question);
+//         }
+//     }
+
+//     /**
+//      * Handles a correct answer.
+//      */
+//     private void handleCorrectAnswer() {
+//         SoundManager.playCorrectAnswer();
+
+//         myMaze.move(myCurrentDirection);
+//         myCorrectCount++;
+//         myScoreLabel.setText("SCORE: "
+//                 + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER));
+//         setFeedback("correct! moved " + myCurrentDirection + ".", GREEN_BUTTON);
+//         myQuestionText.setText("Correct!\n\nPress an arrow to move to the next room.");
+//         clearCurrentQuestion();
+//         updateGrid();
+//         checkGameState();
+//     }
+
+//     /**
+//      * Handles a wrong answer.
+//      *
+//      * @param theCurrentRoom the current room
+//      * @param theQuestion the current question
+//      */
+//     private void handleWrongAnswer(final Room theCurrentRoom,
+//                                    final Question theQuestion) {
+//         SoundManager.playWrongAnswer();
+
+//         theCurrentRoom.lockDoor(myCurrentDirection);
+//         setFeedback("wrong! door locked. answer was: "
+//                 + theQuestion.getCorrectAnswer(), RED_BORDER);
+//         myQuestionText.setText("Wrong answer!\n\nThat door is now permanently locked.\n"
+//                 + "Correct answer: " + theQuestion.getCorrectAnswer()
+//                 + "\n\nTry a different direction.");
+//         clearCurrentQuestion();
+//         updateGrid();
+
+//         if (myMaze.isGameOver()) {
+//             SoundManager.playGameOver();
+//             endGame(false);
+//         }
+//     }
+
+//     /**
+//      * Clears the current question state.
+//      */
+//     private void clearCurrentQuestion() {
+//         myAnswerField.setText("");
+//         myCurrentDoor = null;
+//         myCurrentDirection = null;
+//         myHintUsedForQuestion = false;
+//     }
+
+//     /**
+//      * Sets feedback text and color.
+//      *
+//      * @param theText the feedback text
+//      * @param theColor the feedback color
+//      */
+//     private void setFeedback(final String theText,
+//                              final Color theColor) {
+//         myFeedbackLabel.setText("> " + theText);
+//         myFeedbackLabel.setForeground(theColor);
+//     }
+
+//     /**
+//      * Checks the game state for victory.
+//      */
+//     private void checkGameState() {
+//         if (myMaze.isGameWon()) {
+//             SoundManager.playWin();
+//             endGame(true);
+//         }
+//     }
+
+//     /**
+//      * Ends the current game session.
+//      *
+//      * @param theWon whether the player won
+//      */
+//     private void endGame(final boolean theWon) {
+//         myGameEnded = true;
+//         myCurrentDoor = null;
+//         myCurrentDirection = null;
+//         myAnswerField.setText("");
+
+//         if (theWon) {
+//             setFeedback("victory! choose new game or exit.", GREEN_BUTTON);
+//             myQuestionText.setText("You reached the exit!\n\nFinal Score: "
+//                     + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER));
+//         } else {
+//             setFeedback("game over! choose new game or exit.", RED_BORDER);
+//             myQuestionText.setText("All paths are blocked.\n\nYour quest has failed.");
+//         }
+
+//         showEndGameDialog(theWon);
+//     }
+
+//     /**
+//      * Shows the end-game dialog with New Game and Exit options.
+//      *
+//      * @param theWon whether the player won
+//      */
+//     private void showEndGameDialog(final boolean theWon) {
+//         final String title = theWon ? "Victory!" : "Game Over";
+//         final String message;
+
+//         if (theWon) {
+//             message = "You reached the exit!\nFinal Score: "
+//                     + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER)
+//                     + "\n\nWhat would you like to do?";
+//         } else {
+//             message = "All paths are blocked. Your quest has failed!\n\nWhat would you like to do?";
+//         }
+
+//         final Object[] options = {"New Game", "Exit"};
+//         final int choice = JOptionPane.showOptionDialog(
+//                 this,
+//                 message,
+//                 title,
+//                 JOptionPane.YES_NO_OPTION,
+//                 theWon ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE,
+//                 null,
+//                 options,
+//                 options[0]);
+
+//         if (choice == JOptionPane.YES_OPTION) {
+//             resetGame();
+//         } else if (choice == JOptionPane.NO_OPTION) {
+//             final java.awt.Window window = SwingUtilities.getWindowAncestor(this);
+
+//             if (window != null) {
+//                 window.dispose();
+//             } else {
+//                 System.exit(0);
+//             }
+//         }
+//     }
+
+//     /**
+//      * Resets the game with a fresh maze while keeping the selected character.
+//      */
+//     private void resetGame() {
+//         Database.init();
+
+//         final QuestionFactory factory = new QuestionFactory("trivia.db");
+//         final Maze newMaze = new Maze(mySize);
+//         newMaze.initializeDoors(factory);
+
+//         myMaze = newMaze;
+//         myGameStarted = true;
+//         myGameEnded = false;
+//         myCurrentDoor = null;
+//         myCurrentDirection = null;
+//         myCorrectCount = 0;
+//         myHintUsedForQuestion = false;
+
+//         myScoreLabel.setText("SCORE: 0000");
+//         myAnswerField.setText("");
+//         myQuestionText.setText("New game started!\n\nUse the arrow pad to move between rooms.");
+//         setFeedback("new quest begins!", TEXT_DARK);
+
+//         refreshCharacterBar();
+//         updateGrid();
+//     }
+
+//     /**
+//      * Updates the visual maze grid.
+//      */
+//     private void updateGrid() {
+//         final int currentRow = myMaze.getCurrentRow();
+//         final int currentCol = myMaze.getCurrentCol();
+
+//         for (int row = 0; row < mySize; row++) {
+//             for (int col = 0; col < mySize; col++) {
+//                 updateGridCell(row, col, currentRow, currentCol);
+//             }
+//         }
+//     }
+
+//     /**
+//      * Updates one grid cell.
+//      *
+//      * @param theRow the cell row
+//      * @param theCol the cell column
+//      * @param theCurrentRow the current player row
+//      * @param theCurrentCol the current player column
+//      */
+//     private void updateGridCell(final int theRow,
+//                                 final int theCol,
+//                                 final int theCurrentRow,
+//                                 final int theCurrentCol) {
+//         final JPanel cell = myGridCells[theRow][theCol];
+//         final boolean isCurrent = theRow == theCurrentRow && theCol == theCurrentCol;
+//         final boolean isExit = theRow == mySize - 1 && theCol == mySize - 1;
+
+//         cell.removeAll();
+
+//         if (isCurrent) {
+//             updateCurrentCell(cell);
+//         } else if (isExit) {
+//             updateExitCell(cell);
+//         } else {
+//             updateEmptyCell(cell);
+//         }
+
+//         cell.revalidate();
+//         cell.repaint();
+//     }
+
+//     /**
+//      * Updates the current player cell.
+//      *
+//      * @param theCell the current cell
+//      */
+//     private void updateCurrentCell(final JPanel theCell) {
+//         theCell.setBackground(SAND_LIGHT);
+//         theCell.setBorder(BorderFactory.createLineBorder(GOLD_BORDER, 4));
+
+//         if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
+//             final JLabel placeholder = new JLabel("?");
+
+//             placeholder.setFont(MONO_LARGE);
+//             placeholder.setForeground(BROWN);
+//             theCell.add(placeholder);
+//         } else {
+//             final JLabel icon = new JLabel(myCharacterGridIcons[mySelectedCharacter]);
+
+//             theCell.add(icon);
+//         }
+//     }
+
+//     /**
+//      * Updates the exit cell.
+//      *
+//      * @param theCell the exit cell
+//      */
+//     private void updateExitCell(final JPanel theCell) {
+//         final JLabel icon = new JLabel("*");
+
+//         theCell.setBackground(BLUE_CELL);
+//         theCell.setBorder(BorderFactory.createLineBorder(BLUE_BORDER, 3));
+
+//         icon.setFont(MONO_LARGE);
+//         icon.setForeground(BLUE_BORDER);
+
+//         theCell.add(icon);
+//     }
+
+//     /**
+//      * Updates an empty cell.
+//      *
+//      * @param theCell the empty cell
+//      */
+//     private void updateEmptyCell(final JPanel theCell) {
+//         theCell.setBackground(SAND);
+//         theCell.setBorder(BorderFactory.createLineBorder(SAND_DARK, 3));
+//     }
+
+//     /**
+//      * Saves the current game.
+//      *
+//      * @param theFrame the parent frame
+//      */
+//     private void saveGame(final JFrame theFrame) {
+//         final boolean saved = GameMemento.saveMaze(myMaze);
+
+//         if (saved) {
+//             SoundManager.playSaveGame();
+
+//             JOptionPane.showMessageDialog(
+//                     theFrame,
+//                     "Game saved successfully.",
+//                     "Save Game",
+//                     JOptionPane.INFORMATION_MESSAGE);
+//         } else {
+//             JOptionPane.showMessageDialog(
+//                     theFrame,
+//                     "Game could not be saved.",
+//                     "Save Error",
+//                     JOptionPane.ERROR_MESSAGE);
+//         }
+//     }
+
+//     /**
+//      * Loads a saved game.
+//      *
+//      * @param theFrame the parent frame
+//      */
+//     private void loadGame(final JFrame theFrame) {
+//         final Maze loadedMaze = GameMemento.loadMaze();
+
+//         if (loadedMaze == null) {
+//             JOptionPane.showMessageDialog(
+//                     theFrame,
+//                     "No saved game could be loaded.",
+//                     "Load Error",
+//                     JOptionPane.ERROR_MESSAGE);
+//         } else if (loadedMaze.getSize() != mySize) {
+//             JOptionPane.showMessageDialog(
+//                     theFrame,
+//                     "Saved maze size does not match this game window.",
+//                     "Load Error",
+//                     JOptionPane.ERROR_MESSAGE);
+//         } else {
+//             myMaze = loadedMaze;
+//             SoundManager.playLoadGame();
+
+//             myCurrentDoor = null;
+//             myCurrentDirection = null;
+//             myHintUsedForQuestion = false;
+//             myGameStarted = true;
+//             myGameEnded = false;
+
+//             if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
+//                 mySelectedCharacter = 0;
+//             }
+
+//             myQuestionText.setText("Saved game loaded.\n\nUse the arrow pad to continue.");
+//             myAnswerField.setText("");
+//             setFeedback("saved game loaded.", TEXT_DARK);
+//             refreshCharacterBar();
+//             updateGrid();
+
+//             JOptionPane.showMessageDialog(
+//                     theFrame,
+//                     "Game loaded successfully.",
+//                     "Load Game",
+//                     JOptionPane.INFORMATION_MESSAGE);
+//         }
+//     }
+// }
 
 
 
