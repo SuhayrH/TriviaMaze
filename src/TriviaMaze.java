@@ -3,8 +3,9 @@
  * Spring 2026
  */
 
-import javax.swing.SwingUtilities;
 import view.MazeGUI;
+
+import javax.swing.SwingUtilities;
 
 /**
  * Entry point for the Trivia Maze application.
