@@ -30,6 +30,7 @@ import model.Database;
 import model.Maze;
 import model.Question;
 import model.QuestionFactory;
+import model.Room;
 
 /**
  * The main game panel for the Trivia Maze game.
@@ -76,6 +77,16 @@ public class MazeGUI extends JPanel {
      * Main window height.
      */
     private static final int WINDOW_HEIGHT = 780;
+
+    /**
+     * Locked room background color.
+     */
+    private static final Color LOCKED_ROOM = new Color(200, 80, 80);
+
+    /**
+     * Locked room border color.
+     */
+    private static final Color LOCKED_ROOM_BORDER = new Color(140, 30, 30);
 
     /**
      * Character image paths.
@@ -775,7 +786,7 @@ public class MazeGUI extends JPanel {
         } else if (isExit) {
             updateExitCell(cell);
         } else {
-            updateEmptyCell(cell);
+            updateEmptyCell(cell, theRow, theCol);
         }
 
         cell.revalidate();
@@ -818,13 +829,55 @@ public class MazeGUI extends JPanel {
     }
 
     /**
-     * Updates an empty cell.
+     * Updates an empty cell, showing red with a locked icon if the connecting
+     * door from the current room to this cell is locked.
      *
      * @param theCell the empty cell
+     * @param theRow the cell row
+     * @param theCol the cell column
      */
-    private void updateEmptyCell(final JPanel theCell) {
-        theCell.setBackground(GameColors.SAND);
-        theCell.setBorder(BorderFactory.createLineBorder(GameColors.SAND_DARK, 3));
+    private void updateEmptyCell(final JPanel theCell,
+                                 final int theRow,
+                                 final int theCol) {
+        if (isConnectingDoorLocked(theRow, theCol)) {
+            final ImageIcon lockedIcon = new ImageIcon(
+                    new ImageIcon("src/sprites/locked.png").getImage().getScaledInstance(
+                            GRID_CHARACTER_ICON_SIZE,
+                            GRID_CHARACTER_ICON_SIZE,
+                            Image.SCALE_FAST));
+            theCell.setBackground(LOCKED_ROOM);
+            theCell.setBorder(BorderFactory.createLineBorder(LOCKED_ROOM_BORDER, 3));
+            theCell.add(new JLabel(lockedIcon));
+        } else {
+            theCell.setBackground(GameColors.SAND);
+            theCell.setBorder(BorderFactory.createLineBorder(GameColors.SAND_DARK, 3));
+        }
+    }
+
+    /**
+     * Returns true if the door between the current room and the given cell is locked.
+     *
+     * @param theRow the cell row
+     * @param theCol the cell column
+     * @return true if the connecting door is locked
+     */
+    private boolean isConnectingDoorLocked(final int theRow, final int theCol) {
+        final int currentRow = myMaze.getCurrentRow();
+        final int currentCol = myMaze.getCurrentCol();
+        final Room currentRoom = myMaze.getCurrentRoom();
+        boolean locked = false;
+
+        if (theRow == currentRow - 1 && theCol == currentCol) {
+            locked = currentRoom.hasDoor(NORTH) && currentRoom.isDoorLocked(NORTH);
+        } else if (theRow == currentRow + 1 && theCol == currentCol) {
+            locked = currentRoom.hasDoor(SOUTH) && currentRoom.isDoorLocked(SOUTH);
+        } else if (theRow == currentRow && theCol == currentCol + 1) {
+            locked = currentRoom.hasDoor(EAST) && currentRoom.isDoorLocked(EAST);
+        } else if (theRow == currentRow && theCol == currentCol - 1) {
+            locked = currentRoom.hasDoor(WEST) && currentRoom.isDoorLocked(WEST);
+        }
+
+        return locked;
     }
 
     /**
