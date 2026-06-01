@@ -353,6 +353,18 @@ public class MazeGUI extends JPanel {
      */
     private final JButton myHintButton;
 
+    /** North movement button. */
+    private JButton myNorthButton;
+
+    /** South movement button. */
+    private JButton mySouthButton;
+
+    /** East movement button. */
+    private JButton myEastButton;
+
+    /** West movement button. */
+    private JButton myWestButton;
+
     /**
      * Feedback label.
      */
@@ -809,23 +821,28 @@ public class MazeGUI extends JPanel {
         wrap.setBackground(GOLD);
         wrap.setBorder(BorderFactory.createLineBorder(GOLD_DARK, 3));
 
+        myNorthButton = buildDpadButton(DPAD_UP_IMAGE, NORTH);
+        mySouthButton = buildDpadButton(DPAD_DOWN_IMAGE, SOUTH);
+        myEastButton = buildDpadButton(DPAD_RIGHT_IMAGE, EAST);
+        myWestButton = buildDpadButton(DPAD_LEFT_IMAGE, WEST);
+
         constraints.insets = new Insets(4, 4, 4, 4);
 
         constraints.gridx = 1;
         constraints.gridy = 0;
-        wrap.add(buildDpadButton(DPAD_UP_IMAGE, NORTH), constraints);
+        wrap.add(myNorthButton, constraints);
 
         constraints.gridx = 0;
         constraints.gridy = 1;
-        wrap.add(buildDpadButton(DPAD_LEFT_IMAGE, WEST), constraints);
+        wrap.add(myWestButton, constraints);
 
         constraints.gridx = 2;
         constraints.gridy = 1;
-        wrap.add(buildDpadButton(DPAD_RIGHT_IMAGE, EAST), constraints);
+        wrap.add(myEastButton, constraints);
 
         constraints.gridx = 1;
         constraints.gridy = 2;
-        wrap.add(buildDpadButton(DPAD_DOWN_IMAGE, SOUTH), constraints);
+        wrap.add(mySouthButton, constraints);
 
         nub.setBackground(SAND_DARK);
         nub.setPreferredSize(new Dimension(DPAD_BUTTON_SIZE, DPAD_BUTTON_SIZE));
@@ -1400,6 +1417,55 @@ public class MazeGUI extends JPanel {
                 updateGridCell(row, col, currentRow, currentCol);
             }
         }
+
+        updateDpadButtons();
+    }
+
+    /**
+     * Updates the enabled state of each d-pad button.
+     */
+    private void updateDpadButtons() {
+        updateDpadButton(myNorthButton, NORTH);
+        updateDpadButton(mySouthButton, SOUTH);
+        updateDpadButton(myEastButton, EAST);
+        updateDpadButton(myWestButton, WEST);
+    }
+
+    /**
+     * Updates one d-pad button based on whether movement is available.
+     *
+     * @param theButton the button to update
+     * @param theDirection the movement direction
+     */
+    private void updateDpadButton(final JButton theButton, final String theDirection) {
+        if (theButton != null) {
+            final boolean canMove = canMoveInDirection(theDirection);
+
+            theButton.setEnabled(canMove);
+            theButton.setCursor(Cursor.getPredefinedCursor(
+                    canMove ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+
+            if (canMove) {
+                theButton.setBackground(SAND);
+                theButton.setBorder(BorderFactory.createLineBorder(GOLD_DARK, 2));
+            } else {
+                theButton.setBackground(SAND_DARK);
+                theButton.setBorder(BorderFactory.createLineBorder(TEXT_MID, 2));
+            }
+        }
+    }
+
+    /**
+     * Determines whether the player can move in a direction.
+     *
+     * @param theDirection the movement direction
+     * @return true if movement is currently allowed
+     */
+    private boolean canMoveInDirection(final String theDirection) {
+        return myGameStarted
+                && !myGameEnded
+                && myController.currentRoomHasDoor(theDirection)
+                && !myController.isCurrentRoomDoorLocked(theDirection);
     }
 
     /**
