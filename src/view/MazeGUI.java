@@ -370,6 +370,8 @@ public class MazeGUI extends JPanel {
      */
     private final JLabel myFeedbackLabel;
 
+    private final JLabel myRoomInfoLabel;
+
     /**
      * Score label.
      */
@@ -415,6 +417,15 @@ public class MazeGUI extends JPanel {
         myScoreLabel.setBackground(GOLD);
         myScoreLabel.setOpaque(true);
         myScoreLabel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(GOLD_DARK, 3),
+                new EmptyBorder(2, 8, 2, 8)));
+
+        myRoomInfoLabel = new JLabel("ROOM: (1, 1) | VISITED: YES");
+        myRoomInfoLabel.setFont(MONO_BOLD);
+        myRoomInfoLabel.setForeground(BROWN);
+        myRoomInfoLabel.setBackground(GOLD);
+        myRoomInfoLabel.setOpaque(true);
+        myRoomInfoLabel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(GOLD_DARK, 3),
                 new EmptyBorder(2, 8, 2, 8)));
 
@@ -637,6 +648,7 @@ public class MazeGUI extends JPanel {
         title.setForeground(BROWN);
 
         header.add(title, BorderLayout.WEST);
+        header.add(myRoomInfoLabel, BorderLayout.CENTER);
         header.add(myScoreLabel, BorderLayout.EAST);
         wrap.add(header, BorderLayout.NORTH);
 
@@ -1418,7 +1430,26 @@ public class MazeGUI extends JPanel {
             }
         }
 
-        updateDpadButtons();
+        updateRoomInfoLabel(currentRow, currentCol);
+    }
+
+    /**
+     * Updates the current room information label.
+     *
+     * @param theRow the current room row
+     * @param theCol the current room column
+     */
+    private void updateRoomInfoLabel(final int theRow, final int theCol) {
+        final String visitedText = myMaze.getRoom(theRow, theCol).isVisited()
+                ? "YES"
+                : "NO";
+
+        myRoomInfoLabel.setText("ROOM: ("
+                + (theRow + 1)
+                + ", "
+                + (theCol + 1)
+                + ") | VISITED: "
+                + visitedText);
     }
 
     /**
