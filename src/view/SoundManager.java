@@ -1,149 +1,50 @@
 /*
- * Trivia Maze - TCSS 360
+ * Trivia Maze Project
  * Spring 2026
  */
 
 package view;
 
 import java.awt.Toolkit;
+import java.util.Random;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 
 /**
- * Plays generated sound effects for the Trivia Maze GUI.
- * This class does not require external WAV files.
+ * Sound manager responsible for generating procedural audio
+ * effects for the Trivia Maze game.
+ *
+ * This class provides both wrapper methods (for GUI compatibility)
+ * and an event-based sound engine.
  *
  * @author Jinal Thummar
- * @version 24 May 2026
+ * @version 07 June 2026
  */
 public final class SoundManager {
 
-    /**
-     * Audio sample rate.
-     */
     private static final float SAMPLE_RATE = 44100.0f;
-
-    /**
-     * Audio sample size in bits.
-     */
     private static final int SAMPLE_SIZE_BITS = 8;
-
-    /**
-     * Mono channel count.
-     */
-    private static final int CHANNEL_COUNT = 1;
-
-    /**
-     * Whether audio samples are signed.
-     */
-    private static final boolean SIGNED_AUDIO = true;
-
-    /**
-     * Whether audio is big endian.
-     */
+    private static final int CHANNELS = 1;
+    private static final boolean SIGNED = true;
     private static final boolean BIG_ENDIAN = false;
 
-    /**
-     * Number of milliseconds in one second.
-     */
-    private static final int MILLISECONDS_PER_SECOND = 1000;
+    private static final int MS_PER_SECOND = 1000;
+    private static final int MAX_AMPLITUDE = 127;
 
-    /**
-     * Maximum byte value for generated sound.
-     */
-    private static final int MAX_SOUND_BYTE_VALUE = 127;
+    private static double myMasterVolume = 0.40;
 
-    /**
-     * Volume multiplier.
-     */
-    private static final double VOLUME = 0.35;
+    private static final Random RANDOM = new Random();
 
-    /**
-     * Pause between notes in milliseconds.
-     */
-    private static final int NOTE_PAUSE = 35;
+    //SOUND FREQUENCIES
+    
 
-    /**
-     * Start game sound frequencies.
-     */
-    private static final int[] START_GAME_FREQUENCIES = {392, 523, 659};
-
-    /**
-     * Correct answer sound frequencies.
-     */
-    private static final int[] CORRECT_FREQUENCIES = {659, 784};
-
-    /**
-     * Wrong answer sound frequencies.
-     */
-    private static final int[] WRONG_FREQUENCIES = {220, 165};
-
-    /**
-     * Save game sound frequencies.
-     */
-    private static final int[] SAVE_FREQUENCIES = {523, 659, 784};
-
-    /**
-     * Load game sound frequencies.
-     */
-    private static final int[] LOAD_FREQUENCIES = {784, 659, 523};
-
-    /**
-     * Victory sound frequencies.
-     */
+    private static final int[] CORRECT_FREQUENCIES = {659, 784, 880};
+    private static final int[] WRONG_FREQUENCIES = {220, 165, 110};
     private static final int[] WIN_FREQUENCIES = {523, 659, 784, 1046};
-
-    /**
-     * Game over sound frequencies.
-     */
-    private static final int[] GAME_OVER_FREQUENCIES = {330, 247, 196, 147};
-
-    /**
-     * Hint sound frequencies.
-     */
     private static final int[] HINT_FREQUENCIES = {880, 988};
-
-    /**
-     * Start game note duration.
-     */
-    private static final int START_GAME_DURATION = 90;
-
-    /**
-     * Correct answer note duration.
-     */
-    private static final int CORRECT_DURATION = 95;
-
-    /**
-     * Wrong answer note duration.
-     */
-    private static final int WRONG_DURATION = 140;
-
-    /**
-     * Save game note duration.
-     */
-    private static final int SAVE_DURATION = 80;
-
-    /**
-     * Load game note duration.
-     */
-    private static final int LOAD_DURATION = 80;
-
-    /**
-     * Victory note duration.
-     */
-    private static final int WIN_DURATION = 110;
-
-    /**
-     * Game over note duration.
-     */
-    private static final int GAME_OVER_DURATION = 150;
-
-    /**
-     * Hint note duration.
-     */
-    private static final int HINT_DURATION = 70;
+    private static final int[] EXIT_FREQUENCIES = {784, 659, 523, 392};
 
     /**
      * Private constructor to prevent instantiation.
@@ -151,172 +52,213 @@ public final class SoundManager {
     private SoundManager() {
     }
 
-    /**
-     * Plays the start game sound.
-     */
-    public static void playStartGame() {
-        playSound(START_GAME_FREQUENCIES, START_GAME_DURATION);
-    }
+    //VOLUME CONTROL
 
     /**
-     * Plays the correct answer sound.
-     */
-    public static void playCorrectAnswer() {
-        playSound(CORRECT_FREQUENCIES, CORRECT_DURATION);
-    }
-
-    /**
-     * Plays the wrong answer sound.
-     */
-    public static void playWrongAnswer() {
-        playSound(WRONG_FREQUENCIES, WRONG_DURATION);
-    }
-
-    /**
-     * Plays the save game sound.
-     */
-    public static void playSaveGame() {
-        playSound(SAVE_FREQUENCIES, SAVE_DURATION);
-    }
-
-    /**
-     * Plays the load game sound.
-     */
-    public static void playLoadGame() {
-        playSound(LOAD_FREQUENCIES, LOAD_DURATION);
-    }
-
-    /**
-     * Plays the victory sound.
-     */
-    public static void playWin() {
-        playSound(WIN_FREQUENCIES, WIN_DURATION);
-    }
-
-    /**
-     * Plays the game over sound.
-     */
-    public static void playGameOver() {
-        playSound(GAME_OVER_FREQUENCIES, GAME_OVER_DURATION);
-    }
-
-    /**
-     * Plays the hint sound.
-     */
-    public static void playHint() {
-        playSound(HINT_FREQUENCIES, HINT_DURATION);
-    }
-
-    /**
-     * Plays a sound sequence on a background thread.
+     * Sets master volume.
      *
-     * @param theFrequencies the note frequencies
-     * @param theDuration the note duration
+     * @param theVolume volume (0.0 to 1.0)
      */
-    private static void playSound(final int[] theFrequencies,
-                                  final int theDuration) {
-        final Thread soundThread = new Thread(
-                () -> playSoundSequence(theFrequencies, theDuration),
-                "TriviaMazeSound");
+    public static void setMasterVolume(final double theVolume) {
+        myMasterVolume = Math.max(0.0, Math.min(1.0, theVolume));
+    }
+
+    /* =========================================================
+       WRAPPER METHODS (USED BY MAZEGUI)
+       ========================================================= */
+
+    public static void playStartGame() {
+        playSound(SoundEvent.START_GAME);
+    }
+
+    public static void playCorrectAnswer() {
+        playSound(SoundEvent.CORRECT_ANSWER);
+    }
+
+    public static void playWrongAnswer() {
+        playSound(SoundEvent.WRONG_ANSWER);
+    }
+
+    public static void playSaveGame() {
+        playSound(SoundEvent.SAVE_GAME);
+    }
+
+    public static void playLoadGame() {
+        playSound(SoundEvent.LOAD_GAME);
+    }
+
+    public static void playWin() {
+        playSound(SoundEvent.WIN_GAME);
+    }
+
+    public static void playGameOver() {
+        playSound(SoundEvent.GAME_OVER);
+    }
+
+    public static void playHint() {
+        playSound(SoundEvent.HINT_USED);
+    }
+
+    public static void playExitGame() {
+        playSound(SoundEvent.EXIT_GAME);
+    }
+
+   //CORE SOUND ENGINE
+      
+    /**
+     * Plays sound based on event.
+     *
+     * @param theEvent sound event
+     */
+    public static void playSound(final SoundEvent theEvent) {
+
+        if (theEvent == null) {
+            return;
+        }
+
+        switch (theEvent) {
+
+            case START_GAME:
+                playToneSequence(new int[]{392, 523, 659}, 90);
+                break;
+
+            case CORRECT_ANSWER:
+                playToneSequence(CORRECT_FREQUENCIES, 90);
+                break;
+
+            case WRONG_ANSWER:
+                playToneSequence(WRONG_FREQUENCIES, 140);
+                break;
+
+            case SAVE_GAME:
+                playToneSequence(new int[]{523, 659, 784}, 80);
+                break;
+
+            case LOAD_GAME:
+                playToneSequence(new int[]{784, 659, 523}, 80);
+                break;
+
+            case WIN_GAME:
+                playToneSequence(WIN_FREQUENCIES, 110);
+                break;
+
+            case GAME_OVER:
+                playToneSequence(new int[]{330, 247, 196, 147}, 150);
+                break;
+
+            case HINT_USED:
+                playToneSequence(HINT_FREQUENCIES, 70);
+                break;
+
+            case EXIT_GAME:
+                playToneSequence(EXIT_FREQUENCIES, 120);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    //AUDIO ENGINE
+
+    private static void playToneSequence(final int[] theFrequencies,
+                                         final int theDuration) {
+
+        final Thread soundThread = new Thread(() -> {
+
+            final AudioFormat format = new AudioFormat(
+                    SAMPLE_RATE,
+                    SAMPLE_SIZE_BITS,
+                    CHANNELS,
+                    SIGNED,
+                    BIG_ENDIAN);
+
+            SourceDataLine line = null;
+
+            try {
+                line = AudioSystem.getSourceDataLine(format);
+                line.open(format);
+                line.start();
+
+                for (final int frequency : theFrequencies) {
+                    writeTone(line, frequency, theDuration);
+                    writeSilence(line, 25);
+                }
+
+                line.drain();
+
+            } catch (final LineUnavailableException exception) {
+                Toolkit.getDefaultToolkit().beep();
+            } finally {
+                if (line != null) {
+                    line.stop();
+                    line.close();
+                }
+            }
+
+        }, "TriviaMazeSoundThread");
 
         soundThread.setDaemon(true);
         soundThread.start();
     }
 
-    /**
-     * Plays a sound sequence.
-     *
-     * @param theFrequencies the note frequencies
-     * @param theDuration the note duration
-     */
-    private static void playSoundSequence(final int[] theFrequencies,
-                                          final int theDuration) {
-        final AudioFormat audioFormat = new AudioFormat(
-                SAMPLE_RATE,
-                SAMPLE_SIZE_BITS,
-                CHANNEL_COUNT,
-                SIGNED_AUDIO,
-                BIG_ENDIAN);
-
-        SourceDataLine line = null;
-
-        try {
-            line = AudioSystem.getSourceDataLine(audioFormat);
-            line.open(audioFormat);
-            line.start();
-
-            for (final int frequency : theFrequencies) {
-                writeTone(line, frequency, theDuration);
-                writeSilence(line, NOTE_PAUSE);
-            }
-
-            line.drain();
-        } catch (final LineUnavailableException exception) {
-            Toolkit.getDefaultToolkit().beep();
-        } finally {
-            if (line != null) {
-                line.stop();
-                line.close();
-            }
-        }
-    }
-
-    /**
-     * Writes one tone to the sound line.
-     *
-     * @param theLine the sound line
-     * @param theFrequency the tone frequency
-     * @param theDuration the tone duration
-     */
     private static void writeTone(final SourceDataLine theLine,
                                   final int theFrequency,
                                   final int theDuration) {
-        final byte[] soundData = createToneData(theFrequency, theDuration);
 
-        theLine.write(soundData, 0, soundData.length);
+        final byte[] data = createWave(theFrequency, theDuration);
+        theLine.write(data, 0, data.length);
     }
 
-    /**
-     * Writes silence to separate notes.
-     *
-     * @param theLine the sound line
-     * @param theDuration the silence duration
-     */
     private static void writeSilence(final SourceDataLine theLine,
                                      final int theDuration) {
-        final int sampleCount = getSampleCount(theDuration);
-        final byte[] silenceData = new byte[sampleCount];
 
-        theLine.write(silenceData, 0, silenceData.length);
+        final int samples = getSampleCount(theDuration);
+        final byte[] silence = new byte[samples];
+
+        theLine.write(silence, 0, silence.length);
     }
 
-    /**
-     * Creates tone data.
-     *
-     * @param theFrequency the tone frequency
-     * @param theDuration the tone duration
-     * @return the generated tone data
-     */
-    private static byte[] createToneData(final int theFrequency,
-                                         final int theDuration) {
-        final int sampleCount = getSampleCount(theDuration);
-        final byte[] soundData = new byte[sampleCount];
+    //WAVE GENERATION (IMPROVED AUDIO QUALITY)
+    
 
-        for (int i = 0; i < soundData.length; i++) {
-            final double angle = 2.0 * Math.PI * i * theFrequency / SAMPLE_RATE;
-            soundData[i] = (byte) (Math.sin(angle) * MAX_SOUND_BYTE_VALUE * VOLUME);
+    private static byte[] createWave(final int theFrequency,
+                                      final int theDuration) {
+
+        final int samples = getSampleCount(theDuration);
+        final byte[] data = new byte[samples];
+
+        final double attack = samples * 0.05;
+        final double release = samples * 0.20;
+
+        for (int i = 0; i < samples; i++) {
+
+            double envelope = 1.0;
+
+            if (i < attack) {
+                envelope = i / attack;
+            } else if (i > samples - release) {
+                envelope = (samples - i) / release;
+            }
+
+            final double angle =
+                    2.0 * Math.PI * i * theFrequency / SAMPLE_RATE;
+
+            final double wave =
+                    Math.sin(angle)
+                    + 0.5 * Math.sin(2 * angle)
+                    + 0.25 * Math.sin(3 * angle);
+
+            data[i] = (byte) (wave
+                    * MAX_AMPLITUDE
+                    * myMasterVolume
+                    * envelope);
         }
 
-        return soundData;
+        return data;
     }
 
-    /**
-     * Converts milliseconds to audio sample count.
-     *
-     * @param theDuration the duration in milliseconds
-     * @return the sample count
-     */
     private static int getSampleCount(final int theDuration) {
-        return (int) (SAMPLE_RATE * theDuration / MILLISECONDS_PER_SECOND);
+        return (int) (SAMPLE_RATE * theDuration / MS_PER_SECOND);
     }
 }
