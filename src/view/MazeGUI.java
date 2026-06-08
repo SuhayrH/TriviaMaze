@@ -257,6 +257,14 @@ public class MazeGUI extends JPanel {
     }
 
     /**
+     * Updates the score label using the current correct answer count.
+     */
+    private void updateScoreLabel() {
+        myScoreLabel.setText("SCORE: "
+                + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER));
+    }
+
+    /**
      * Builds the room info label.
      *
      * @return the room info label
@@ -594,8 +602,7 @@ public class MazeGUI extends JPanel {
         SoundManager.playCorrectAnswer();
         myController.moveThroughCurrentDoor();
         myCorrectCount = myController.getCorrectCount();
-        myScoreLabel.setText("SCORE: "
-                + String.format("%04d", myCorrectCount * POINTS_PER_CORRECT_ANSWER));
+        updateScoreLabel();
         setFeedback("correct! moved " + direction + ".", GameColors.GREEN_BUTTON);
         myQuestionPanel.getQuestionText().setText(
                 "Correct!\n\nPress an arrow to move to the next room.");
@@ -736,8 +743,7 @@ public class MazeGUI extends JPanel {
         myGameStarted = true;
         myGameEnded = false;
         myCorrectCount = 0;
-
-        myScoreLabel.setText("SCORE: 0000");
+        updateScoreLabel();
         myQuestionPanel.getAnswerField().setText("");
         myQuestionPanel.getQuestionText().setText(
                 "New game started!\n\nUse the arrow pad to move between rooms.");
@@ -974,7 +980,7 @@ public class MazeGUI extends JPanel {
             myGameStarted = true;
             myGameEnded = false;
             myCorrectCount = myController.getCorrectCount();
-            myScoreLabel.setText("SCORE: 0000");
+            updateScoreLabel();
 
             if (mySelectedCharacter == NO_SELECTED_CHARACTER) {
                 mySelectedCharacter = 0;
