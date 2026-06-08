@@ -71,3 +71,12 @@ During Iteration 5, the team focused on code organization, visual improvements, 
 ### Issues / Problems During Iteration 5
 - Refactoring MazeGUI on Mac caused file naming issues due to the case-insensitive file system, requiring terminal commands to fix the casing.
 - Splitting MazeGUI into separate classes required careful wiring of callbacks between panels to keep game logic centralized.
+
+---
+
+## Iteration 6 Summary
+During Iteration 6, the team focused on finalizing the project for submission. The sound system was overhauled and improved, with `SoundManager.java` and `SoundEvent.java` refactored to support distinct audio events including correct answer, incorrect answer, win, game over, hint used, and exit game. View folder class files were renamed to follow proper Java naming conventions (e.g. `Mazegui.java` to `MazeGUI.java`, `Mazepanel.java` to `MazePanel.java`). The SRS document was updated to reflect the final implemented architecture, resolved all TBD items, confirmed Java Swing as the GUI framework, documented the sound system classes, and filled in the previously incomplete Software Interfaces section. The UML class diagram was also reviewed and updated to match the final class structure. Final integration testing was performed to verify all core features including maze navigation, SQLite question loading, door locking, save/load, and win/loss detection are working correctly.
+
+### Issues / Problems During Iteration 6
+- After pulling the latest changes from the team, `SoundManager.java` had a build error due to a missing `EXIT_GAME` value in the `SoundEvent` enum. This was resolved by adding the missing enum constant.
+- File rename conflicts occurred when pulling updated class names from GitHub due to macOS case-insensitive file system behavior. These were resolved using `git stash` before pulling.
