@@ -20,5 +20,5 @@ public enum SoundEvent {
     LOAD_GAME,
     WIN_GAME,
     GAME_OVER,
-    HINT_USED
+    EXIT_GAME, HINT_USED
 }
