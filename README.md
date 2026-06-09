@@ -103,3 +103,6 @@ Overall, our project demonstrates object-oriented design principles, MVC archite
 
 2. Run:
     java -cp "out:lib/*" view.TriviaMaze
+
+3. Run all JUnit test class: 
+    java -cp "lib/*:out" org.junit.platform.console.ConsoleLauncher --scan-classpath
