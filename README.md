@@ -80,3 +80,26 @@ During Iteration 6, the team focused on finalizing the project for submission. T
 ### Issues / Problems During Iteration 6
 - After pulling the latest changes from the team, `SoundManager.java` had a build error due to a missing `EXIT_GAME` value in the `SoundEvent` enum. This was resolved by adding the missing enum constant.
 - File rename conflicts occurred when pulling updated class names from GitHub due to macOS case-insensitive file system behavior. These were resolved using `git stash` before pulling.
+
+## Final Summary:
+
+We successfully fulfilled all required project specifications and extended the project beyond the minimum requirements.
+
+Extra Features Implemented:
+- Sound effects for major game events
+- Start Game button
+- Victory
+- Game Over
+- Hint system for assisting players with trivia questions
+- Dynamic scoring system
+- Custom game graphics and sprites
+
+Overall, our project demonstrates object-oriented design principles, MVC architecture, design patterns, database integration, unit testing, and a polished graphical user interface.
+
+## How to run:
+
+1. Complie:
+    javac -cp "lib/*" -d out $(find src -name "*.java")
+
+2. Run:
+    java -cp "out:lib/*" view.TriviaMaze
